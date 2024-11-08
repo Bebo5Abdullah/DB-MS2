@@ -97,4 +97,141 @@ CREATE TABLE Technical_Support_Ticket (
 END
 
 
+--------------------------------2.1 C
+GO
+CREATE PROC dropAllTables
+AS
+BEGIN
+    -- Drop tables in reverse dependency order without any checks
+    DROP TABLE Technical_Support_Ticket;
+    DROP TABLE Voucher;
+    DROP TABLE E_shop;
+    DROP TABLE Physical_Shop;
+    DROP TABLE Shop;
+    DROP TABLE Plan_Provides_Benefits;
+    DROP TABLE Cashback;
+    DROP TABLE Exclusive_Offer;
+    DROP TABLE Points_Group;
+    DROP TABLE Benefits;
+    DROP TABLE Transfer_money;
+    DROP TABLE Wallet;
+    DROP TABLE Process_Payment;
+    DROP TABLE Payment;
+    DROP TABLE Plan_Usage;
+    DROP TABLE Subscription;
+    DROP TABLE Service_Plan;
+    DROP TABLE Customer_Account;
+    DROP TABLE Customer_profile;
+END;
 
+-----------------------------------2.1 C END
+
+-------------------------------2.1 e
+GO
+CREATE PROC clearAllTables
+AS
+BEGIN
+
+    DELETE FROM Technical_Support_Ticket;
+    DELETE FROM Voucher;
+    DELETE FROM E_shop;
+    DELETE FROM Physical_Shop;
+    DELETE FROM Shop;
+    DELETE FROM Plan_Provides_Benefits;
+    DELETE FROM Cashback;
+    DELETE FROM Exclusive_Offer;
+    DELETE FROM Points_Group;
+    DELETE FROM Benefits;
+    DELETE FROM Transfer_money;
+    DELETE FROM Wallet;
+    DELETE FROM Process_Payment;
+    DELETE FROM Payment;
+    DELETE FROM Plan_Usage;
+    DELETE FROM Subscription;
+    DELETE FROM Service_Plan;
+    DELETE FROM Customer_Account;
+    DELETE FROM Customer_profile;
+
+END;
+-------------------------------------- 2.1 e END
+
+
+--------------------------------2.2 a
+GO
+CREATE VIEW allCustomerAccounts AS
+SELECT 
+    cp.nationalID,
+    cp.first_name,
+    cp.last_name,
+    cp.email,
+    cp.address,
+    cp.date_of_birth,
+    ca.mobileNo,
+    ca.balance,
+    ca.account_type,
+    ca.start_date,
+    ca.status,
+    ca.point
+FROM 
+    Customer_profile AS cp
+JOIN 
+    Customer_Account AS ca
+ON 
+    cp.nationalID = ca.nationalID
+WHERE 
+    ca.status = 'active';
+--------------------------------------2.2 a END
+
+
+-----------------------------------2.2 b
+GO
+CREATE VIEW allServicePlans AS
+SELECT 
+    planID,
+    SMS_offered,
+    minutes_offered,
+    data_offered,
+    name,
+    price,
+    description
+FROM 
+    Service_Plan;
+--------------------------------------2.2 b END
+
+
+-----------------------------------2.2 c
+GO
+CREATE VIEW allBenefits AS
+SELECT 
+    benefitID,
+    description,
+    validity_date,
+    status,
+    mobileNo
+FROM 
+    Benefits
+WHERE 
+    status = 'active';
+----------------------------------------2.2 c END
+
+
+------------------------------------2.2 D
+GO
+CREATE VIEW AccountPayments AS
+SELECT 
+    p.paymentID,
+    p.amount,
+    p.date_of_payment,
+    p.payment_method,
+    p.status AS payment_status,
+    p.mobileNo,
+    ca.balance,
+    ca.account_type,
+    ca.status AS account_status
+FROM 
+    Payment AS p
+JOIN 
+    Customer_Account AS ca
+ON 
+    p.mobileNo = ca.mobileNo;
+--------------------------------------------2.2 D END
