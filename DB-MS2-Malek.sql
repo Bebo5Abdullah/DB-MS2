@@ -5,6 +5,8 @@ GO
 CREATE PROC createAllTables
 AS
 Begin
+
+--------------- Rest of 2.1 create all tables
 CREATE TABLE Transfer_money(
 	walletID1 INT FOREIGN KEY REFERENCES Wallet(walletID),
 	walletID2 INT FOREIGN KEY REFERENCES Wallet(walletID),
@@ -91,6 +93,7 @@ CREATE TABLE Technical_Support_Ticket (
     PRIMARY KEY(ticketID,mobileNo)
 );
 
+---------------- END OF 2.1 CREATE ALL TABLES
 END
 
 
