@@ -127,7 +127,7 @@ Begin
 		PRIMARY KEY(offerID, benefitID)
 	);
 
-	CREATE TABLE Cashback (
+	CREATE TABLE Cashback (															--->
 		CashbackID INT IDENTITY,
 		benefitID INT FOREIGN KEY REFERENCES Benefits(benefitID),
 		walletID INT FOREIGN KEY REFERENCES Wallet(walletID),
@@ -319,6 +319,49 @@ AS
 
 -------------------------------------------------------------------------------------------------------------------
 
+--2.3 a															---> Check for columns to view
+GO
+CREATE PROC Account_Plan
+AS
+	SELECT mobileNo , planID
+	FROM Subscribtion
+	ORDER BY mobileNo
+
+--2.3 b
+GO
+CREATE FUNCTION Account_Plan_date
+(@date date , @planID int)
+RETURNS TABLE
+AS
+RETURN(
+	SELECT sub.mobileNo, sub.planID , sp.name
+	FROM Subscribtion sub
+	JOIN Service_Plan sp ON sub.planID = sp.planID
+	WHERE sub.planID = @planID AND sub.subscibtion_date = @date
+)
+
+--2.3 c
+GO
+CREATE FUNCTION Account_Usage_Plan
+(@mobileNO char(11) , @from_date date)
+RETURNS TABLE
+AS
+RETURN(
+	SELECT planID ,
+	       SUM(data_consumption) as total_data_consumption , SUM(minutes_used) as total_minutes_used, SUM(SMS_sent) as total_SMS_sent
+	FROM Plan_Usage
+	WHERE mobileNo = @mobileNo AND start_date >= @from_date
+	GROUP BY planID
+)
+
+--2.3 d																				------>INCOMPLETE
+GO 
+CREATE PROC Benefits_Account
+@mobileNo char(11) , @planID int
 
 
+--2.3 e
+
+
+	
 
