@@ -7,7 +7,9 @@ CREATE PROC createAllTables
 AS
 Begin
 	CREATE TABLE Customer_profile(
+
 		nationalID INT PRIMARY KEY ,
+
 		first_name varchar(50),
 		last_name varchar(50),
 		email varchar(50),
@@ -68,6 +70,7 @@ Begin
 	CREATE TABLE Process_Payment(												--------> PAYMENT(AMOUNT) badeena
 		paymentID int foreign key references Payment(paymentID),
 		planID int foreign key references Service_Plan(planID),
+
 		--remaining_balance as (
 		--	CASE
 		--		WHEN Payment(amount) < Service_Plan(price)
@@ -82,6 +85,7 @@ Begin
 		--		ELSE 0
 		--	END
 		--)
+
 
 	);
 
@@ -365,7 +369,8 @@ RETURN(
 );
 
 
---2.3 d																				
+
+--2.3 d																			
 GO 
 CREATE PROC Benefits_Account
 @mobileNo char(11) , @planID int
@@ -375,7 +380,6 @@ BEGIN
 	WHERE mobileNO = @mobileNo AND
 	benefitID IN (SELECT benefitID from Plan_Provides_Benefits where planID = @planID)
 END
-
 
 --2.3 e
 GO
@@ -594,6 +598,19 @@ AS RETURN(
 	subscription_date >= GETADD(MONTH, -5 , GETDATE())
 )
 
+--2.4 l
+GO 
+CREATE PROC Initiate_plan_payment
+@mobileNo char(11) , @amount decimal(10,1), @payment_method varchar(50) , @planID int
+AS
+BEGIN
+	INSERT INTO Payment VALUES (@amount , GETDATE() , @payment_method , 'successful' , @mobileNo)
+
+	UPDATE Subscription
+	SET status = 'active' , subscirption_date = GETDATE()
+	WHERE mobileNo = @mobileNo AND planID = @planID
+END
+
 
 
 --2.4 m
@@ -609,8 +626,36 @@ BEGIN
 END 
 	DECLARE @points as int = (SELECT points FROM Voucher WHERE voucherID = @voucherID )
 
-GO 
+--2.4 n
+GO
+CREATE PROC Initiate_balance_payment
+@mobileNo char(11) , @amount decimal(10 , 1) , @payment_method varchar(50)
+AS
+BEGIN
+	INSERT INTO Payment VALUES (@amount , GETDATE() , @payment_method , 'successful' , @mobileNo)
+	UPDATE Customer_Account
+	SET balance = balance + @amount
+	WHERE mobileNo = @mobileNo
+END
 
+--2.4 o
+GO
+CREATE PROC Redeem_voucher_points
+@mobileNo char(11) , @voucherID int
+AS
+BEGIN
+	IF ((SELECT expiry_date FROM Voucher WHERE voucherID = @voucherID) > GETDATE())
+	BEGIN
+		UPDATE Voucher 
+		SET redeem_date = GETDATE()
+		WHERE voucherID = @voucherID
 
+		DECLARE @points as int = (SELECT points FROM Voucher WHERE voucherID = @voucherID)
+		UPDATE Customer_Account
+		SET point = point + @points
+		WHERE mobileNo = @mobileNo
+	END
+	ELSE
+		PRINT 'Voucher Expired'
+END
 
-	
