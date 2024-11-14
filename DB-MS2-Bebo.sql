@@ -619,12 +619,12 @@ CREATE PROC  Payment_wallet_cashback
 @MobileNo char(11), @payment_id int, @benefit_id int
 AS 
 BEGIN
-	DECLARE @cashback as decimal(10,2) = (Select amount FROM Payment WHERE payment_id = @payment_id AND mobileNO = @MobileNO ) * 0.10
+	DECLARE @cashback as int = (Select amount FROM Payment WHERE payment_id = @payment_id AND mobileNO = @MobileNO ) * 0.10
 	DECLARE @wallet_id as int = (Select walletID from Wallet WHERE mobileNo = @MobileNo)
 	INSERT INTO Cashback VALUES(@benefit_id,@wallet_id, @cashback, GETDATE())
 	UPDATE Wallet SET current_balance = current_balance + @cashback WHERE walletID = @wallet_id
 END 
-	DECLARE @points as int = (SELECT points FROM Voucher WHERE voucherID = @voucherID )
+	
 
 --2.4 n
 GO
