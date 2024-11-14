@@ -1,16 +1,17 @@
 ﻿CREATE DATABASE TELECOM_TEAM_126
 
 
+
 GO
 CREATE PROC createAllTables
 AS
 Begin
 	CREATE TABLE Customer_profile(
-		nationalID INT PRIMARY KEY IDENTITY,
+		nationalID INT PRIMARY KEY ,
 		first_name varchar(50),
 		last_name varchar(50),
 		email varchar(50),
-		address varchchar(50),
+		address varchar(50),
 		date_of_birth date
 	);
 
@@ -64,23 +65,23 @@ Begin
 		mobileNo char(11) foreign key references Customer_Account(mobileNo)
 	);
 
-	CREATE TABLE Process_Payment(
+	CREATE TABLE Process_Payment(												--------> PAYMENT(AMOUNT) badeena
 		paymentID int foreign key references Payment(paymentID),
 		planID int foreign key references Service_Plan(planID),
-		remaining_balance as (
-			CASE
-				WHEN Payment(amount) < Service_Plan(price)
-				THEN Service_Plan(price) - Payment(amount)
-				ELSE 0
-			END
-		),
-		additional_amounts as (
-			CASE
-				WHEN Payment(amount) > Service_Plan(price)
-				THEN Payment(amount) - Service_Plan(price)
-				ELSE 0
-			END
-		)
+		--remaining_balance as (
+		--	CASE
+		--		WHEN Payment(amount) < Service_Plan(price)
+		--		THEN Service_Plan(price) - Payment(amount)
+		--		ELSE 0
+		--	END
+		--),
+		--additional_amounts as (
+		--	CASE
+		--		WHEN Payment(amount) > Service_Plan(price)
+		--		THEN Payment(amount) - Service_Plan(price)
+		--		ELSE 0
+		--	END
+		--)
 
 	);
 
@@ -127,11 +128,11 @@ Begin
 		PRIMARY KEY(offerID, benefitID)
 	);
 
-	CREATE TABLE Cashback (															--->
+	CREATE TABLE Cashback (															
 		CashbackID INT IDENTITY,
 		benefitID INT FOREIGN KEY REFERENCES Benefits(benefitID),
 		walletID INT FOREIGN KEY REFERENCES Wallet(walletID),
-		amount INT,
+		amount INT default 0,
 		credit_date DATE,
 		PRIMARY KEY(CashbackID,benefitID)
 	);
@@ -148,7 +149,7 @@ Begin
 		category varchar(50)
 	);
 
-	CREATE TABLE PhysicalShop (
+	CREATE TABLE Physical_Shop (
 		shopID INT PRIMARY KEY FOREIGN KEY REFERENCES Shop(shopID),
 		address varchar(50),
 		working_hours varchar(50)
@@ -179,7 +180,9 @@ Begin
 		PRIMARY KEY(ticketID,mobileNo)
 	);
 
+	
 END;
+
 
 --------------------------------2.1 C
 GO
@@ -187,25 +190,25 @@ CREATE PROC dropAllTables
 AS
 BEGIN
     -- Drop tables in reverse dependency order without any checks
-    DROP TABLE Technical_Support_Ticket;
-    DROP TABLE Voucher;
-    DROP TABLE E_shop;
-    DROP TABLE Physical_Shop;
-    DROP TABLE Shop;
-    DROP TABLE Plan_Provides_Benefits;
-    DROP TABLE Cashback;
-    DROP TABLE Exclusive_Offer;
-    DROP TABLE Points_Group;
-    DROP TABLE Benefits;
-    DROP TABLE Transfer_money;
-    DROP TABLE Wallet;
-    DROP TABLE Process_Payment;
-    DROP TABLE Payment;
-    DROP TABLE Plan_Usage;
-    DROP TABLE Subscription;
-    DROP TABLE Service_Plan;
-    DROP TABLE Customer_Account;
-    DROP TABLE Customer_profile;
+    DROP TABLE IF EXISTS Transfer_money;
+    DROP TABLE IF EXISTS Cashback;
+	DROP TABLE IF EXISTS Points_Group;
+    DROP TABLE IF EXISTS Exclusive_Offer;
+    DROP TABLE IF EXISTS Plan_Provides_Benefits;
+    DROP TABLE IF EXISTS Benefits;
+    DROP TABLE IF EXISTS Subscription;
+    DROP TABLE IF EXISTS Plan_Usage;
+    DROP TABLE IF EXISTS Process_Payment;
+    DROP TABLE IF EXISTS Payment;
+    DROP TABLE IF EXISTS Wallet;
+    DROP TABLE IF EXISTS Voucher;
+    DROP TABLE IF EXISTS Technical_Support_Ticket;
+    DROP TABLE IF EXISTS Customer_Account;
+    DROP TABLE IF EXISTS E_shop;
+    DROP TABLE IF EXISTS Physical_Shop;
+    DROP TABLE IF EXISTS Service_Plan;
+    DROP TABLE IF EXISTS Shop;
+    DROP TABLE IF EXISTS Customer_profile;
 END;
 
 -----------------------------------2.1 C END
@@ -321,6 +324,7 @@ AS
 
 -------------------------------------------------------------------------------------------------------------------
 
+
 --2.3 a															
 GO
 CREATE PROC Account_Plan
@@ -339,6 +343,7 @@ RETURNS TABLE
 AS
 RETURN(
 	SELECT sub.mobileNo, sub.planID , sp.name
+
 	FROM Subscription sub
 	JOIN Service_Plan sp ON sub.planID = sp.planID
 	WHERE sub.planID = @planID AND sub.subscibtion_date = @date
@@ -347,6 +352,7 @@ RETURN(
 --2.3 c
 GO
 CREATE FUNCTION Account_Usage_Plan (@mobileNO char(11) , @from_date date)
+
 RETURNS TABLE
 AS
 RETURN(
@@ -355,16 +361,20 @@ RETURN(
 	FROM Plan_Usage
 	WHERE mobileNo = @mobileNo AND start_date >= @from_date
 	GROUP BY planID
+
 );
 
---2.3 d																				------>INCOMPLETE
+
+--2.3 d																				
 GO 
 CREATE PROC Benefits_Account
 @mobileNo char(11) , @planID int
 AS
 BEGIN
-	DELETE FROM Benefits bnft
-	JOIN Plan_Provides_Benefits ppb ON bnft.benefitID = ppb.benefitID
+	DELETE FROM Benefits
+	WHERE mobileNO = @mobileNo AND
+	benefitID IN (SELECT benefitID from Plan_Provides_Benefits where planID = @planID)
+END
 
 
 --2.3 e
@@ -378,7 +388,7 @@ RETURN(
 	WHERE SMS_offered is not null
 );
 
---2.3 f															      ---> Wallet considered transaction?
+--2.3 f															      ---> Wallet considered transaction? last year walla sana men delwa2ty
 GO
 CREATE PROC Account_Payment_Points
 @mobileNo char(11) , @transactionsNo INT OUTPUT, @totalPoints INT OUTPUT
@@ -387,15 +397,21 @@ AS
 	FROM Payment pay
 	JOIN Points_Group pg ON pay.PaymentID = pg.PaymentID
 	WHERE pay.mobileNo = @mobileNo AND pay.status = 'successful' and year(pay.date_of_payment) = year(GETDATE()) - 1
+
 	
---2.3 g																	---> INCOMPLETE
---GO
---CREATE FUNCTION Wallet_Cashback_Amount (@walletID int, @planId int)
---RETURNS int
---AS 
---BEGIN
---	DECLARE @cashback_amount int
---;
+--2.3 g																	
+GO
+CREATE FUNCTION Wallet_Cashback_Amount (@walletID int, @planId int)
+RETURNS int
+AS 
+BEGIN
+	DECLARE @cashback_amount as int =  (
+	SELECT amount FROM Cashback
+	WHERE walletID = @walletID AND 
+	benefitID IN (SELECT benefitID FROM Plan_Provides_Benefits WHERE planID = @planId)
+	)
+	RETURN @cashback_amount
+END;
 
 
 --2.3 h
@@ -478,7 +494,7 @@ AS
 	FROM Service_Plan 
 	WHERE planId NOT IN (SELECT planID FROM Subscription WHERE mobileNo = @mobileNo)
 
---2.4 d																			--->Should be SUM???
+--2.4 d																			--->Should be SUM??? 
 GO
 CREATE FUNCTION Usage_Plan_CurrentMonth (@mobileNo char(11))
 RETURNS TABLE
@@ -523,17 +539,37 @@ AS
 	WHERE mobileNo = @mobileNo
 	HAVING value = MAX(value)
 		
---2.4 h																				----> INCOMPLETE AAAAA333333
---GO
---CREATE FUNCTION Remaining_plan_amount (@mobileNo char(11) , @plan_name varchar(50))
---RETURNS 
---AS
---BEGIN
+--2.4 h																	-----> Which remaining balance if there is 2 payments for same plan			
+GO
+CREATE FUNCTION Remaining_plan_amount (@mobileNo char(11) , @plan_name varchar(50))
+RETURNS decimal(10,1) 
+AS
+BEGIN
+	DECLARE @planID as int  = (SELECT planID from Service_Plan WHERE name = @plan_name)
+	DECLARE @rem decimal(10,1) = 
+	(SELECT SUM(pp.remaining_balance) 
+	FROM Process_Payment pp JOIN Payment pay 
+	ON pp.paymentID = pay.paymentID 
+	WHERE pay.mobileNO = @mobileNo AND pp.planID = @planID)
+	RETURN @rem
+END;
 
 
 
---2.4 i																				-----> INCOMPLETE ;kwjeriohwoierpo[
-
+--2.4 i																	-----> Which extra amount if there is 2 payments for same plan				
+GO
+CREATE FUNCTION Remaining_plan_amount (@mobileNo char(11) , @plan_name varchar(50))
+RETURNS decimal(10,1) 
+AS
+BEGIN
+	DECLARE @planID as int  = (SELECT planID from Service_Plan WHERE name = @plan_name)
+	DECLARE @extra_amount decimal(10,1) = 
+	(SELECT SUM(pp.extra_amount) 
+	FROM Process_Payment pp JOIN Payment pay 
+	ON pp.paymentID = pay.paymentID 
+	WHERE pay.mobileNO = @mobileNo AND pp.planID = @planID)
+	RETURN @extra_amount
+END;
 
 --2.4 j
 GO
@@ -557,6 +593,8 @@ AS RETURN(
 	WHERE sub.mobileNo = @mobileNo AND
 	subscription_date >= GETADD(MONTH, -5 , GETDATE())
 )
+
+
 
 --2.4 m
 GO 
