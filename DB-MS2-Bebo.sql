@@ -6,7 +6,7 @@ CREATE PROC createAllTables
 AS
 Begin
 	CREATE TABLE Customer_profile(
-		nationalID INT PRIMARY KEY IDENTITY,
+		nationalID INT PRIMARY KEY,
 		first_name varchar(50),
 		last_name varchar(50),
 		email varchar(50),
@@ -81,6 +81,7 @@ Begin
 				ELSE 0
 			END
 		)
+		PRIMARY KEY(paymentID , planID)
 
 	);
 
@@ -127,11 +128,11 @@ Begin
 		PRIMARY KEY(offerID, benefitID)
 	);
 
-	CREATE TABLE Cashback (															--->
+	CREATE TABLE Cashback (															
 		CashbackID INT IDENTITY,
 		benefitID INT FOREIGN KEY REFERENCES Benefits(benefitID),
 		walletID INT FOREIGN KEY REFERENCES Wallet(walletID),
-		amount INT,
+		amount INT default 0,
 		credit_date DATE,
 		PRIMARY KEY(CashbackID,benefitID)
 	);
