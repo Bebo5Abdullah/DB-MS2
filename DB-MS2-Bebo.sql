@@ -679,5 +679,138 @@ BEGIN
 END
 
 
+EXEC createAllTables
 
 
+-- Insert into Customer_profile
+INSERT INTO Customer_profile VALUES (1, 'John', 'Doe', 'john.doe@example.com', '123 Main St', '1990-01-01');
+INSERT INTO Customer_profile VALUES (2, 'Jane', 'Smith', 'jane.smith@example.com', '456 Elm St', '1985-05-15');
+INSERT INTO Customer_profile VALUES (3, 'Alice', 'Johnson', 'alice.johnson@example.com', '789 Oak St', '1992-09-20');
+INSERT INTO Customer_profile VALUES (4, 'Bob', 'Brown', 'bob.brown@example.com', '101 Pine St', '1988-03-10');
+INSERT INTO Customer_profile VALUES (5, 'Eve', 'Davis', 'eve.davis@example.com', '202 Maple St', '1995-12-25');
+
+-- Insert into Customer_Account
+INSERT INTO Customer_Account VALUES ('12345678901', 'password1', 100.0, 'Prepaid', '2023-01-01', 'Active', 50, 1);
+INSERT INTO Customer_Account VALUES ('12345678902', 'password2', 200.0, 'Postpaid', '2023-02-01', 'Inactive', 100, 2);
+INSERT INTO Customer_Account VALUES ('12345678903', 'password3', 300.0, 'Prepaid', '2023-03-01', 'Active', 150, 3);
+INSERT INTO Customer_Account VALUES ('12345678904', 'password4', 400.0, 'Postpaid', '2023-04-01', 'Suspended', 200, 4);
+INSERT INTO Customer_Account VALUES ('12345678905', 'password5', 500.0, 'Prepaid', '2023-05-01', 'Active', 250, 5);
+
+-- Insert into Service_Plan
+INSERT INTO Service_Plan VALUES (100, 500, 1000, 'Basic Plan', 10, 'Affordable basic plan');
+INSERT INTO Service_Plan VALUES (200, 1000, 2000, 'Standard Plan', 20, 'Standard plan with good features');
+INSERT INTO Service_Plan VALUES (300, 1500, 3000, 'Premium Plan', 30, 'Premium plan for heavy users');
+INSERT INTO Service_Plan VALUES (400, 2000, 4000, 'Unlimited Plan', 40, 'Unlimited plan for unlimited usage');
+INSERT INTO Service_Plan VALUES (500, 2500, 5000, 'Family Plan', 50, 'Family plan with shared benefits');
+
+-- Insert into Subscription
+INSERT INTO Subscription VALUES ('12345678901', 100, '2024-01-01', 'Active');
+INSERT INTO Subscription VALUES ('12345678902', 200, '2024-02-01', 'Inactive');
+INSERT INTO Subscription VALUES ('12345678903', 300, '2024-03-01', 'Active');
+INSERT INTO Subscription VALUES ('12345678904', 400, '2024-04-01', 'Suspended');
+INSERT INTO Subscription VALUES ('12345678905', 500, '2024-05-01', 'Active');
+
+-- Insert into Plan_Usage
+INSERT INTO Plan_Usage VALUES ('2024-01-01', '2024-01-31', 500, 1000, 50, '12345678901', 100);
+INSERT INTO Plan_Usage VALUES ('2024-02-01', '2024-02-28', 400, 800, 40, '12345678902', 200);
+INSERT INTO Plan_Usage VALUES ('2024-03-01', '2024-03-31', 600, 1200, 60, '12345678903', 300);
+INSERT INTO Plan_Usage VALUES ('2024-04-01', '2024-04-30', 700, 1400, 70, '12345678904', 400);
+INSERT INTO Plan_Usage VALUES ('2024-05-01', '2024-05-31', 800, 1600, 80, '12345678905', 500);
+
+-- Insert into Payment
+INSERT INTO Payment VALUES (20.0, '2024-01-10', 'Credit Card', 'Success', '12345678901');
+INSERT INTO Payment VALUES (30.0, '2024-02-15', 'Debit Card', 'Failed', '12345678902');
+INSERT INTO Payment VALUES (40.0, '2024-03-20', 'PayPal', 'Success', '12345678903');
+INSERT INTO Payment VALUES (50.0, '2024-04-25', 'Bank Transfer', 'Pending', '12345678904');
+INSERT INTO Payment VALUES (60.0, '2024-05-30', 'Cash', 'Success', '12345678905');
+
+-- Insert into Process_Payment
+INSERT INTO Process_Payment VALUES (1, 100);
+INSERT INTO Process_Payment VALUES (2, 200);
+INSERT INTO Process_Payment VALUES (3, 300);
+INSERT INTO Process_Payment VALUES (4, 400);
+INSERT INTO Process_Payment VALUES (5, 500);
+
+-- Insert into Wallet
+INSERT INTO Wallet VALUES (500.0, 'USD', '2024-01-01', 1, '12345678901');
+INSERT INTO Wallet VALUES (1000.0, 'USD', '2024-02-01', 2, '12345678902');
+INSERT INTO Wallet VALUES (1500.0, 'USD', '2024-03-01', 3, '12345678903');
+INSERT INTO Wallet VALUES (2000.0, 'USD', '2024-04-01', 4, '12345678904');
+INSERT INTO Wallet VALUES (2500.0, 'USD', '2024-05-01', 5, '12345678905');
+
+-- Insert into Transfer_money
+INSERT INTO Transfer_money VALUES (2, 1, 100.00, '2024-01-15');
+INSERT INTO Transfer_money VALUES (3, 2, 200.00, '2024-02-20');
+INSERT INTO Transfer_money VALUES (4, 3, 150.00, '2024-03-25');
+INSERT INTO Transfer_money VALUES (5, 4, 300.00, '2024-04-30');
+INSERT INTO Transfer_money VALUES (1, 5, 250.00, '2024-05-05');
+
+-- Insert into Benefits
+INSERT INTO Benefits VALUES ('Free 1GB Data', '2024-12-31', 'Active', '12345678901');
+INSERT INTO Benefits VALUES ('Free 100 Minutes', '2024-12-31', 'Active', '12345678902');
+INSERT INTO Benefits VALUES ('Discount on Subscription', '2024-12-31', 'Expired', '12345678903');
+INSERT INTO Benefits VALUES ('Free 500 SMS', '2024-12-31', 'Active', '12345678904');
+INSERT INTO Benefits VALUES ('Bonus Points', '2024-12-31', 'Inactive', '12345678905');
+
+-- Insert into Points_Group
+INSERT INTO Points_Group VALUES (1, 50, 1);
+INSERT INTO Points_Group VALUES (2, 100, 2);
+INSERT INTO Points_Group VALUES (3, 150, 3);
+INSERT INTO Points_Group VALUES (4, 200, 4);
+INSERT INTO Points_Group VALUES (5, 250, 5);
+
+-- Insert into Exclusive_Offer
+INSERT INTO Exclusive_Offer VALUES (1, 500, 100, 50);
+INSERT INTO Exclusive_Offer VALUES (2, 1000, 200, 100);
+INSERT INTO Exclusive_Offer VALUES (3, 1500, 300, 150);
+INSERT INTO Exclusive_Offer VALUES (4, 2000, 400, 200);
+INSERT INTO Exclusive_Offer VALUES (5, 2500, 500, 250);
+
+-- Insert into Cashback
+INSERT INTO Cashback VALUES (1, 1, 10, '2024-06-01');
+INSERT INTO Cashback VALUES (2, 2, 20, '2024-07-01');
+INSERT INTO Cashback VALUES (3, 3, 30, '2024-08-01');
+INSERT INTO Cashback VALUES (4, 4, 40, '2024-09-01');
+INSERT INTO Cashback VALUES (5, 5, 50, '2024-10-01');
+
+-- Insert into Plan_Provides_Benefits
+INSERT INTO Plan_Provides_Benefits VALUES (1, 100);
+INSERT INTO Plan_Provides_Benefits VALUES (2, 200);
+INSERT INTO Plan_Provides_Benefits VALUES (3, 300);
+INSERT INTO Plan_Provides_Benefits VALUES (4, 400);
+INSERT INTO Plan_Provides_Benefits VALUES (5, 500);
+
+-- Insert into Shop
+INSERT INTO Shop VALUES ('Tech Store', 'Electronics');
+INSERT INTO Shop VALUES ('Book Haven', 'Books');
+INSERT INTO Shop VALUES ('Grocery Plus', 'Groceries');
+INSERT INTO Shop VALUES ('Fashion Hub', 'Clothing');
+INSERT INTO Shop VALUES ('Gadget World', 'Electronics');
+
+-- Insert into Physical_Shop
+
+INSERT INTO Physical_Shop VALUES (4, '101 Pine St', '11:00 AM - 7:00 PM');
+INSERT INTO Physical_Shop VALUES (5, '202 Maple St', '9:30 AM - 8:30 PM');
+
+-- Insert into E_shop
+INSERT INTO E_shop VALUES (1, 'www.techstore.com', 5);
+INSERT INTO E_shop VALUES (2, 'www.bookhaven.com', 4);
+INSERT INTO E_shop VALUES (3, 'www.groceryplus.com', 5);
+
+-- Insert into Voucher
+INSERT INTO Voucher VALUES (20, '2024-12-31', 50, '12345678901', 1, '2024-01-01');
+INSERT INTO Voucher VALUES (50, '2024-11-30', 100, '12345678902', 2, '2024-02-01');
+INSERT INTO Voucher VALUES (30, '2024-10-31', 150, '12345678903', 3, '2024-03-01');
+INSERT INTO Voucher VALUES (40, '2024-09-30', 200, '12345678904', 4, '2024-04-01');
+INSERT INTO Voucher VALUES (60, '2024-08-31', 250, '12345678905', 5, '2024-05-01');
+
+-- Insert into Technical_Support_Ticket
+INSERT INTO Technical_Support_Ticket VALUES ('12345678901', 'Unable to access account', 1, 'Open');
+INSERT INTO Technical_Support_Ticket VALUES ('12345678902', 'Payment issue', 2, 'In Progress');
+INSERT INTO Technical_Support_Ticket VALUES ('12345678903', 'Subscription activation delay', 3, 'Resolved');
+INSERT INTO Technical_Support_Ticket VALUES ('12345678904', 'Data usage not updating', 2, 'Open');
+INSERT INTO Technical_Support_Ticket VALUES ('12345678905', 'App crashing frequently', 1, 'In Progress');
+
+
+truncate table transfer_money
+select * from Transfer_money
