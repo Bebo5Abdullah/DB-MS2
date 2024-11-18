@@ -2,6 +2,7 @@
 
 
 
+
 GO
 CREATE PROC createAllTables
 AS
@@ -24,7 +25,7 @@ Begin
 		account_type varchar(50),
 		start_date date,
 		status varchar(50),
-		point int,
+		point int default 0,
 		nationalID int foreign key references Customer_profile(nationalID)
 	);
 
@@ -70,24 +71,11 @@ Begin
 	CREATE TABLE Process_Payment(												--------> PAYMENT(AMOUNT) badeena
 		paymentID int foreign key references Payment(paymentID),
 		planID int foreign key references Service_Plan(planID),
-
-		--remaining_balance as (
-		--	CASE
-		--		WHEN Payment(amount) < Service_Plan(price)
-		--		THEN Service_Plan(price) - Payment(amount)
-		--		ELSE 0
-		--	END
-		--),
-		--additional_amounts as (
-		--	CASE
-		--		WHEN Payment(amount) > Service_Plan(price)
-		--		THEN Payment(amount) - Service_Plan(price)
-		--		ELSE 0
-		--	END
-		--)
-
-
+		remaining_balance as dbo.calcRemainBalance(),
+		extra_amount as dbo.calcExtraAmount()
 	);
+
+	
 
 	CREATE TABLE Wallet(
 		walletID int primary key identity,
@@ -186,6 +174,37 @@ Begin
 
 	
 END;
+
+
+
+go
+CREATE FUNCTION calcRemainBalance() 
+RETURNS decimal(10,1) 
+AS BEGIN
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payments pay, Process_Payments pp where pay.paymentID = pp.paymentID)
+		DECLARE @y as decimal(10,1) = (SELECT pp.price FROM Service_Plan sp, Process_Payments pp where sp.planID = pp.planID)
+		DECLARE @res  decimal(10,1) 
+		IF (@x > @y) 
+			set @res = @x - @y
+		ELSE 
+			set @res = 0
+		RETURN @res
+END
+
+
+go
+CREATE FUNCTION calcExtraAmount() 
+RETURNS decimal(10,1) 
+AS BEGIN
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payments pay, Process_Payments pp where pay.paymentID = pp.paymentID)
+		DECLARE @y as decimal(10,1) = (SELECT pp.price FROM Service_Plan sp, Process_Payments pp where sp.planID = pp.planID)
+		DECLARE @res  decimal(10,1) 
+		IF (@x < @y) 
+			set @res = @y - @x
+		ELSE 
+			set @res = 0
+		RETURN @res
+END
 
 
 --------------------------------2.1 C
@@ -383,13 +402,13 @@ END
 
 --2.3 e
 GO
-CREATE FUNCTION Account_SMS_Offers (@mobileNo char(11))
+CREATE FUNCTION Account_SMS_Offers (@mobileNo char(11))				
 RETURNS TABLE
 AS
 RETURN(
 	SELECT exoff.offerID, exoff.benefitID, exoff.SMS_offered
 	FROM Exclusive_Offer exoff
-	WHERE SMS_offered is not null
+	WHERE SMS_offered is not null AND SMS_offered > 0
 );
 
 --2.3 f															      ---> Wallet considered transaction? last year walla sana men delwa2ty
@@ -658,4 +677,7 @@ BEGIN
 	ELSE
 		PRINT 'Voucher Expired'
 END
+
+
+
 
