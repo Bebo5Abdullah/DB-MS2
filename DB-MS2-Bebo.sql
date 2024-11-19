@@ -1,4 +1,5 @@
 ﻿CREATE DATABASE TELECOM_TEAM_126
+DROP DATABASE TELECOM_TEAM_126
 
 
 
@@ -176,7 +177,6 @@ Begin
 END;
 
 
-
 go
 CREATE FUNCTION calcRemainBalance() 
 RETURNS decimal(10,1) 
@@ -234,6 +234,7 @@ BEGIN
     DROP TABLE IF EXISTS Customer_profile;
 END;
 
+EXEC dropAllTables
 -----------------------------------2.1 C END
 
 -------------------------------2.1 e
@@ -272,6 +273,7 @@ AS
 	SELECT pr.*, acc.mobileNo
 	FROM Customer_profile pr 
 	JOIN Customer_Account acc ON pr.nationalID = acc.nationalID
+	WHERE acc.status = 'active'
 
 --2.2 b
 GO
@@ -292,7 +294,7 @@ AS
 GO
 CREATE VIEW AccountPayments
 AS 
-	SELECT pay.* , acc.*
+	SELECT pay.paymentID, pay.amount, pay.date_of_payment , pay.payment_method, pay.status as payment_status , acc.*
 	FROM Payment pay 
 	JOIN Customer_Account acc ON pay.mobileNo = acc.mobileNo
 
@@ -369,7 +371,7 @@ RETURN(
 
 	FROM Subscription sub
 	JOIN Service_Plan sp ON sub.planID = sp.planID
-	WHERE sub.planID = @planID AND sub.subscibtion_date = @date
+	WHERE sub.planID = @planID AND sub.subscription_date = @date
 );
 
 --2.3 c
@@ -523,7 +525,7 @@ CREATE FUNCTION Usage_Plan_CurrentMonth (@mobileNo char(11))
 RETURNS TABLE
 AS 
 RETURN(
-	SELECT planID, PlnUsg.data_consumption , PlnUsg.minutes_used , PlnUsg.SMS_sent
+	SELECT PlnUsg.planID, PlnUsg.data_consumption , PlnUsg.minutes_used , PlnUsg.SMS_sent
 	FROM Plan_Usage PlnUsg
 	JOIN Subscription sub ON PlnUsg.planID = sub.planID
 	WHERE sub.mobileNo = @mobileNo AND sub.status = 'active' AND YEAR(sub.subscription_date) = YEAR(GETDATE()) AND MONTH(sub.subscription_date) = MONTH(GETDATE())
@@ -549,7 +551,7 @@ AS
 	SELECT @output = COUNT(tst.ticketID) 
 	FROM Technical_Support_Ticket tst
 	JOIN Customer_Account acc ON tst.mobileNo = acc.mobileNo
-	WHERE acc.nationalID = @natioanlID AND status != 'Resolved'
+	WHERE acc.nationalID = @nationalID AND tst.status != 'Resolved'
 
 
 --2.4 g
@@ -560,7 +562,9 @@ AS
 	SELECT @voucherID = voucherID
 	FROM Voucher
 	WHERE mobileNo = @mobileNo
-	HAVING value = MAX(value)
+	AND value = (SELECT MAX(Value)
+				 FROM Voucher
+				 WHERE mobileNo = @mobileNo)
 		
 --2.4 h																	-----> Which remaining balance if there is 2 payments for same plan			
 GO
@@ -570,7 +574,7 @@ AS
 BEGIN
 	DECLARE @planID as int  = (SELECT planID from Service_Plan WHERE name = @plan_name)
 	DECLARE @rem decimal(10,1) = 
-	(SELECT SUM(pp.remaining_balance) 
+	(SELECT pp.remaining_balance
 	FROM Process_Payment pp JOIN Payment pay 
 	ON pp.paymentID = pay.paymentID 
 	WHERE pay.mobileNO = @mobileNo AND pp.planID = @planID)
@@ -581,13 +585,13 @@ END;
 
 --2.4 i																	-----> Which extra amount if there is 2 payments for same plan				
 GO
-CREATE FUNCTION Remaining_plan_amount (@mobileNo char(11) , @plan_name varchar(50))
+CREATE FUNCTION Extra_plan_amount (@mobileNo char(11) , @plan_name varchar(50))
 RETURNS decimal(10,1) 
 AS
 BEGIN
 	DECLARE @planID as int  = (SELECT planID from Service_Plan WHERE name = @plan_name)
 	DECLARE @extra_amount decimal(10,1) = 
-	(SELECT SUM(pp.extra_amount) 
+	(SELECT pp.extra_amount 
 	FROM Process_Payment pp JOIN Payment pay 
 	ON pp.paymentID = pay.paymentID 
 	WHERE pay.mobileNO = @mobileNo AND pp.planID = @planID)
@@ -614,7 +618,7 @@ AS RETURN(
 	FROM Service_Plan sp
 	JOIN Subscription sub ON sp.planID = sub.planID
 	WHERE sub.mobileNo = @mobileNo AND
-	subscription_date >= GETADD(MONTH, -5 , GETDATE())
+	subscription_date >= DATEADD(MONTH, -5 , GETDATE())
 )
 
 --2.4 l
@@ -626,7 +630,7 @@ BEGIN
 	INSERT INTO Payment VALUES (@amount , GETDATE() , @payment_method , 'successful' , @mobileNo)
 
 	UPDATE Subscription
-	SET status = 'active' , subscirption_date = GETDATE()
+	SET status = 'active' , subscription_date = GETDATE()
 	WHERE mobileNo = @mobileNo AND planID = @planID
 END
 
@@ -638,7 +642,7 @@ CREATE PROC  Payment_wallet_cashback
 @MobileNo char(11), @payment_id int, @benefit_id int
 AS 
 BEGIN
-	DECLARE @cashback as int = (Select amount FROM Payment WHERE payment_id = @payment_id AND mobileNO = @MobileNO ) * 0.10
+	DECLARE @cashback as int = (Select amount FROM Payment WHERE paymentID = @payment_id AND mobileNO = @MobileNO ) * 0.10
 	DECLARE @wallet_id as int = (Select walletID from Wallet WHERE mobileNo = @MobileNo)
 	INSERT INTO Cashback VALUES(@benefit_id,@wallet_id, @cashback, GETDATE())
 	UPDATE Wallet SET current_balance = current_balance + @cashback WHERE walletID = @wallet_id
@@ -656,6 +660,7 @@ BEGIN
 	SET balance = balance + @amount
 	WHERE mobileNo = @mobileNo
 END
+
 
 --2.4 o
 GO
@@ -682,135 +687,370 @@ END
 EXEC createAllTables
 
 
--- Insert into Customer_profile
-INSERT INTO Customer_profile VALUES (1, 'John', 'Doe', 'john.doe@example.com', '123 Main St', '1990-01-01');
-INSERT INTO Customer_profile VALUES (2, 'Jane', 'Smith', 'jane.smith@example.com', '456 Elm St', '1985-05-15');
-INSERT INTO Customer_profile VALUES (3, 'Alice', 'Johnson', 'alice.johnson@example.com', '789 Oak St', '1992-09-20');
-INSERT INTO Customer_profile VALUES (4, 'Bob', 'Brown', 'bob.brown@example.com', '101 Pine St', '1988-03-10');
-INSERT INTO Customer_profile VALUES (5, 'Eve', 'Davis', 'eve.davis@example.com', '202 Maple St', '1995-12-25');
+-- Insert data into Customer_Profile
+INSERT INTO Customer_Profile (nationalID, first_name, last_name, email, address, date_of_birth)
+VALUES 
+(1, 'John', 'Doe', 'john.doe@example.com', '123 Elm Street', '1980-05-15'),
+(2, 'Jane', 'Smith', 'jane.smith@example.com', '456 Oak Street', '1990-08-21'),
+(3, 'Michael', 'Brown', 'michael.brown@example.com', '789 Pine Street', '1975-02-11');
 
--- Insert into Customer_Account
-INSERT INTO Customer_Account VALUES ('12345678901', 'password1', 100.0, 'Prepaid', '2023-01-01', 'Active', 50, 1);
-INSERT INTO Customer_Account VALUES ('12345678902', 'password2', 200.0, 'Postpaid', '2023-02-01', 'Inactive', 100, 2);
-INSERT INTO Customer_Account VALUES ('12345678903', 'password3', 300.0, 'Prepaid', '2023-03-01', 'Active', 150, 3);
-INSERT INTO Customer_Account VALUES ('12345678904', 'password4', 400.0, 'Postpaid', '2023-04-01', 'Suspended', 200, 4);
-INSERT INTO Customer_Account VALUES ('12345678905', 'password5', 500.0, 'Prepaid', '2023-05-01', 'Active', 250, 5);
+SELECT* FROM Customer_Profile
 
--- Insert into Service_Plan
-INSERT INTO Service_Plan VALUES (100, 500, 1000, 'Basic Plan', 10, 'Affordable basic plan');
-INSERT INTO Service_Plan VALUES (200, 1000, 2000, 'Standard Plan', 20, 'Standard plan with good features');
-INSERT INTO Service_Plan VALUES (300, 1500, 3000, 'Premium Plan', 30, 'Premium plan for heavy users');
-INSERT INTO Service_Plan VALUES (400, 2000, 4000, 'Unlimited Plan', 40, 'Unlimited plan for unlimited usage');
-INSERT INTO Service_Plan VALUES (500, 2500, 5000, 'Family Plan', 50, 'Family plan with shared benefits');
+-- Insert data into Customer_Account
+INSERT INTO Customer_Account (mobileNo, pass, balance, account_type, start_date, status, point, nationalID)
+VALUES 
+-- Accounts for John Doe
+('01234567890', 'password123', 100.0, 'Prepaid', '2023-01-01', 'active', 0, 1),
+('02345678901', 'password456', 50.0, 'Post Paid', '2023-02-01', 'onhold', 20, 1),
 
--- Insert into Subscription
-INSERT INTO Subscription VALUES ('12345678901', 100, '2024-01-01', 'Active');
-INSERT INTO Subscription VALUES ('12345678902', 200, '2024-02-01', 'Inactive');
-INSERT INTO Subscription VALUES ('12345678903', 300, '2024-03-01', 'Active');
-INSERT INTO Subscription VALUES ('12345678904', 400, '2024-04-01', 'Suspended');
-INSERT INTO Subscription VALUES ('12345678905', 500, '2024-05-01', 'Active');
+-- Accounts for Jane Smith
+('03456789012', 'password789', 200.0, 'Pay_as_you_go', '2023-03-01', 'active', 15, 2),
+('04567890123', 'password012', 150.0, 'Prepaid', '2023-04-01', 'onhold', 5, 2),
 
--- Insert into Plan_Usage
-INSERT INTO Plan_Usage VALUES ('2024-01-01', '2024-01-31', 500, 1000, 50, '12345678901', 100);
-INSERT INTO Plan_Usage VALUES ('2024-02-01', '2024-02-28', 400, 800, 40, '12345678902', 200);
-INSERT INTO Plan_Usage VALUES ('2024-03-01', '2024-03-31', 600, 1200, 60, '12345678903', 300);
-INSERT INTO Plan_Usage VALUES ('2024-04-01', '2024-04-30', 700, 1400, 70, '12345678904', 400);
-INSERT INTO Plan_Usage VALUES ('2024-05-01', '2024-05-31', 800, 1600, 80, '12345678905', 500);
+-- Accounts for Michael Brown
+('05678901234', 'password345', 75.0, 'Post Paid', '2023-05-01', 'active', 10, 3),
+('06789012345', 'password678', 90.0, 'Pay_as_you_go', '2023-06-01', 'onhold', 25, 3);
 
--- Insert into Payment
-INSERT INTO Payment VALUES (20.0, '2024-01-10', 'Credit Card', 'Success', '12345678901');
-INSERT INTO Payment VALUES (30.0, '2024-02-15', 'Debit Card', 'Failed', '12345678902');
-INSERT INTO Payment VALUES (40.0, '2024-03-20', 'PayPal', 'Success', '12345678903');
-INSERT INTO Payment VALUES (50.0, '2024-04-25', 'Bank Transfer', 'Pending', '12345678904');
-INSERT INTO Payment VALUES (60.0, '2024-05-30', 'Cash', 'Success', '12345678905');
+SELECT* FROM Customer_Account
 
--- Insert into Process_Payment
-INSERT INTO Process_Payment VALUES (1, 100);
-INSERT INTO Process_Payment VALUES (2, 200);
-INSERT INTO Process_Payment VALUES (3, 300);
-INSERT INTO Process_Payment VALUES (4, 400);
-INSERT INTO Process_Payment VALUES (5, 500);
+-- Insert data into Service_Plan
+INSERT INTO Service_Plan (SMS_offered, minutes_offered, data_offered, name, price, description)
+VALUES 
+(100, 500, 5, 'Plan A', 30, 'Basic Plan'),
+(200, 1000, 10, 'Plan B', 50, 'Standard Plan'),
+(300, 1500, 15, 'Plan C', 70, 'Premium Plan');
 
--- Insert into Wallet
-INSERT INTO Wallet VALUES (500.0, 'USD', '2024-01-01', 1, '12345678901');
-INSERT INTO Wallet VALUES (1000.0, 'USD', '2024-02-01', 2, '12345678902');
-INSERT INTO Wallet VALUES (1500.0, 'USD', '2024-03-01', 3, '12345678903');
-INSERT INTO Wallet VALUES (2000.0, 'USD', '2024-04-01', 4, '12345678904');
-INSERT INTO Wallet VALUES (2500.0, 'USD', '2024-05-01', 5, '12345678905');
+SELECT*FROM Service_Plan
 
--- Insert into Transfer_money
-INSERT INTO Transfer_money VALUES (2, 1, 100.00, '2024-01-15');
-INSERT INTO Transfer_money VALUES (3, 2, 200.00, '2024-02-20');
-INSERT INTO Transfer_money VALUES (4, 3, 150.00, '2024-03-25');
-INSERT INTO Transfer_money VALUES (5, 4, 300.00, '2024-04-30');
-INSERT INTO Transfer_money VALUES (1, 5, 250.00, '2024-05-05');
+-- Insert data into Subscription
+INSERT INTO Subscription (mobileNo, planID, subscription_date, status)
+VALUES 
+('01234567890', 1, '2023-01-15', 'active'),
+('02345678901', 2, '2023-02-15', 'onhold'),
+('03456789012', 3, '2023-03-15', 'active'),
+('04567890123', 1, '2023-04-15', 'onhold'),
+('05678901234', 2, '2023-05-15', 'active'),
+('06789012345', 3, '2023-06-15', 'onhold');
 
--- Insert into Benefits
-INSERT INTO Benefits VALUES ('Free 1GB Data', '2024-12-31', 'Active', '12345678901');
-INSERT INTO Benefits VALUES ('Free 100 Minutes', '2024-12-31', 'Active', '12345678902');
-INSERT INTO Benefits VALUES ('Discount on Subscription', '2024-12-31', 'Expired', '12345678903');
-INSERT INTO Benefits VALUES ('Free 500 SMS', '2024-12-31', 'Active', '12345678904');
-INSERT INTO Benefits VALUES ('Bonus Points', '2024-12-31', 'Inactive', '12345678905');
-
--- Insert into Points_Group
-INSERT INTO Points_Group VALUES (1, 50, 1);
-INSERT INTO Points_Group VALUES (2, 100, 2);
-INSERT INTO Points_Group VALUES (3, 150, 3);
-INSERT INTO Points_Group VALUES (4, 200, 4);
-INSERT INTO Points_Group VALUES (5, 250, 5);
-
--- Insert into Exclusive_Offer
-INSERT INTO Exclusive_Offer VALUES (1, 500, 100, 50);
-INSERT INTO Exclusive_Offer VALUES (2, 1000, 200, 100);
-INSERT INTO Exclusive_Offer VALUES (3, 1500, 300, 150);
-INSERT INTO Exclusive_Offer VALUES (4, 2000, 400, 200);
-INSERT INTO Exclusive_Offer VALUES (5, 2500, 500, 250);
-
--- Insert into Cashback
-INSERT INTO Cashback VALUES (1, 1, 10, '2024-06-01');
-INSERT INTO Cashback VALUES (2, 2, 20, '2024-07-01');
-INSERT INTO Cashback VALUES (3, 3, 30, '2024-08-01');
-INSERT INTO Cashback VALUES (4, 4, 40, '2024-09-01');
-INSERT INTO Cashback VALUES (5, 5, 50, '2024-10-01');
-
--- Insert into Plan_Provides_Benefits
-INSERT INTO Plan_Provides_Benefits VALUES (1, 100);
-INSERT INTO Plan_Provides_Benefits VALUES (2, 200);
-INSERT INTO Plan_Provides_Benefits VALUES (3, 300);
-INSERT INTO Plan_Provides_Benefits VALUES (4, 400);
-INSERT INTO Plan_Provides_Benefits VALUES (5, 500);
-
--- Insert into Shop
-INSERT INTO Shop VALUES ('Tech Store', 'Electronics');
-INSERT INTO Shop VALUES ('Book Haven', 'Books');
-INSERT INTO Shop VALUES ('Grocery Plus', 'Groceries');
-INSERT INTO Shop VALUES ('Fashion Hub', 'Clothing');
-INSERT INTO Shop VALUES ('Gadget World', 'Electronics');
-
--- Insert into Physical_Shop
-
-INSERT INTO Physical_Shop VALUES (4, '101 Pine St', '11:00 AM - 7:00 PM');
-INSERT INTO Physical_Shop VALUES (5, '202 Maple St', '9:30 AM - 8:30 PM');
-
--- Insert into E_shop
-INSERT INTO E_shop VALUES (1, 'www.techstore.com', 5);
-INSERT INTO E_shop VALUES (2, 'www.bookhaven.com', 4);
-INSERT INTO E_shop VALUES (3, 'www.groceryplus.com', 5);
-
--- Insert into Voucher
-INSERT INTO Voucher VALUES (20, '2024-12-31', 50, '12345678901', 1, '2024-01-01');
-INSERT INTO Voucher VALUES (50, '2024-11-30', 100, '12345678902', 2, '2024-02-01');
-INSERT INTO Voucher VALUES (30, '2024-10-31', 150, '12345678903', 3, '2024-03-01');
-INSERT INTO Voucher VALUES (40, '2024-09-30', 200, '12345678904', 4, '2024-04-01');
-INSERT INTO Voucher VALUES (60, '2024-08-31', 250, '12345678905', 5, '2024-05-01');
-
--- Insert into Technical_Support_Ticket
-INSERT INTO Technical_Support_Ticket VALUES ('12345678901', 'Unable to access account', 1, 'Open');
-INSERT INTO Technical_Support_Ticket VALUES ('12345678902', 'Payment issue', 2, 'In Progress');
-INSERT INTO Technical_Support_Ticket VALUES ('12345678903', 'Subscription activation delay', 3, 'Resolved');
-INSERT INTO Technical_Support_Ticket VALUES ('12345678904', 'Data usage not updating', 2, 'Open');
-INSERT INTO Technical_Support_Ticket VALUES ('12345678905', 'App crashing frequently', 1, 'In Progress');
+SELECT* FROm Subscription
 
 
-truncate table transfer_money
-select * from Transfer_money
+-- Insert data into Plan_Usage
+INSERT INTO Plan_Usage (start_date, end_date, data_consumption, minutes_used, SMS_sent, mobileNo, planID)
+VALUES 
+('2023-01-01', '2023-01-31', 2, 100, 10, '01234567890', 1),
+('2023-02-01', '2023-02-28', 4, 200, 20, '02345678901', 2),
+('2023-03-01', '2023-03-31', 6, 300, 30, '03456789012', 3),
+('2023-04-01', '2023-04-30', 8, 400, 40, '04567890123', 1),
+('2023-05-01', '2023-05-31', 10, 500, 50, '05678901234', 2),
+('2023-06-01', '2023-06-30', 12, 600, 60, '06789012345', 3);
+
+SELECT * FROM Plan_Usage
+
+-- Insert data into Payment
+INSERT INTO Payment (amount, date_of_payment, payment_method, status, mobileNo)
+VALUES 
+(30.0, '2023-01-10', 'cash', 'successful', '01234567890'),
+(50.0, '2023-02-10', 'credit', 'pending', '02345678901'),
+(70.0, '2023-03-10', 'cash', 'rejected', '03456789012'),
+(90.0, '2023-04-10', 'credit', 'successful', '04567890123'),
+(110.0, '2023-05-10', 'cash', 'pending', '05678901234'),
+(130.0, '2023-06-10', 'credit', 'successful', '06789012345');
+
+SELECT* FROM Payment
+
+-- Insert data into Process_Payment
+INSERT INTO Process_Payment (paymentID, planID)
+VALUES 
+(1, 1),
+(2, 2),
+(3, 3);
+
+SELECT* FROM Process_Payment
+
+
+-- Insert data into Wallet
+INSERT INTO Wallet (current_balance, currency, last_modified_date, nationalID, mobileNo)
+VALUES 
+(100.0, 'USD', '2023-01-05', 1, '01234567890'),
+(200.0, 'USD', '2023-02-05', 2, '03456789012'),
+(150.0, 'USD', '2023-03-05', 3, '05678901234');
+
+
+SELECT* FROM Wallet
+DELETE FROM Wallet
+
+-- Insert data into Transfer_money
+INSERT INTO Transfer_money (walletID1, walletID2, amount, transfer_date)
+VALUES 
+(1, 2, 50.0, '2023-01-20'),
+(2, 3, 70.0, '2023-02-20'),
+(1, 3, 100.0, '2023-03-20'),
+(2, 1, 120.0, '2023-04-20'),
+(3, 2, 80.0, '2023-05-20'),
+(3, 1, 90.0, '2023-06-20');
+SELECT* FROM Transfer_money
+
+
+-- Insert data into Benefits
+INSERT INTO Benefits (description, validity_date, status, mobileNo)
+VALUES 
+('10% Discount', '2023-12-31', 'active', '01234567890'),
+('Free SMS', '2023-11-30', 'expired', '02345678901'),
+('Double Data', '2023-10-31', 'active', '03456789012'),
+('Extra Minutes', '2023-09-30', 'expired', '04567890123'),
+('Cashback', '2023-08-31', 'active', '05678901234'),
+('Special Plan', '2023-07-31', 'expired', '06789012345');
+
+SELECT* FROM Benefits
+
+
+-- Insert data into Points_Group
+INSERT INTO Points_Group (benefitID, pointsAmount, PaymentID)
+VALUES 
+(1, 50, 1),
+(2, 30, 2),
+(3, 70, 3),
+(4, 20, 4),
+(5, 90, 5),
+(6, 60, 6);
+
+SELECT* FROM Points_Group
+
+
+-- Insert data into Exclusive_Offer
+INSERT INTO Exclusive_Offer (benefitID, internet_offered, SMS_offered, minutes_offered)
+VALUES 
+(1, 1, 10, 50),
+(2, 2, 20, 100),
+(3, 3, 30, 150),
+(4, 4, 40, 200),
+(5, 5, 50, 250),
+(6, 6, 60, 300);
+
+SELECT* FROM Exclusive_Offer
+DELETE FROM Exclusive_Offer
+
+
+-- Insert data into CashBack
+INSERT INTO CashBack (benefitID, walletID, amount, credit_date)
+VALUES 
+(1, 1, 3.0, '2023-01-11'),
+(3, 2, 7.0, '2023-02-11'),
+(5, 3, 11.0, '2023-03-11');
+
+
+SELECT* FROM CashBack
+DELETE FROM CashBack
+TRUNCATE TABLE Cashback
+
+
+-- Insert data into Plan_Provides_Benefits
+INSERT INTO Plan_Provides_Benefits (benefitID, planID)
+VALUES 
+(1, 1),
+(2, 2),
+(3, 3),
+(4, 1),
+(5, 2),
+(6, 3);
+
+SELECT* FROM Plan_Provides_Benefits
+
+-- Insert data into Shop
+INSERT INTO Shop (name, category)
+VALUES 
+('Tech World', 'Electronics'),
+('Fashion Hub', 'Clothing'),
+('Gadget Store', 'Electronics'),
+('Home Essentials', 'Furniture'),
+('Books & More', 'Books'),
+('Game Corner', 'Gaming');
+
+
+SELECT* FROM Shop
+DELETE FROM Shop
+
+
+-- Insert data into Physical_Shop
+INSERT INTO Physical_Shop (shopID, address, working_hours)
+VALUES 
+(1, 'Tech Lane 123', '9 AM - 9 PM'),
+(2, 'Fashion Street 456', '10 AM - 8 PM'),
+(3, 'Gadget Ave 789', '9 AM - 10 PM'),
+(4, 'Home St 321', '8 AM - 6 PM'),
+(5, 'Book Blvd 654', '9 AM - 7 PM'),
+(6, 'Game Road 987', '10 AM - 9 PM');
+
+SELECT* FROM Physical_Shop
+
+
+
+-- Insert data into E_shop
+INSERT INTO E_shop (shopID, URL, rating)
+VALUES 
+(1, 'https://www.techworld.com', 5),
+(2, 'https://www.fashionhub.com', 4),
+(3, 'https://www.gadgetstore.com', 3),
+(4, 'https://www.homeessentials.com', 4),
+(5, 'https://www.booksandmore.com', 5),
+(6, 'https://www.gamecorner.com', 5);
+
+SELECT* FROM E_shop
+
+
+-- Insert data into Voucher
+INSERT INTO Voucher (value, expiry_date, points, mobileNo, shopID, redeem_date)
+VALUES 
+(100, '2023-12-31', 20, NULL, 1, NULL),  -- Not redeemed
+(50, '2023-11-30', 10, NULL, 2, NULL),   -- Not redeemed
+(200, '2023-10-31', 30, '01234567890', 3, '2023-09-01'),
+(150, '2023-09-30', 25, '03456789012', 4, '2023-08-01'),
+(75, '2023-08-31', 15, '05678901234', 5, '2023-07-01'),
+(125, '2023-07-31', 22, '04567890123', 6, '2023-06-01');
+
+
+SELECT* FROM Voucher
+DELETE FROM Voucher
+
+
+-- Insert data into Technical_Support_Ticket
+INSERT INTO Technical_Support_Ticket (mobileNo, Issue_description, priority_level, status)
+VALUES 
+('01234567890', 'Internet not working', 1, 'Open'),
+('02345678901', 'Billing issue', 2, 'In Progress'),
+('03456789012', 'Cannot make calls', 3, 'Resolved'),
+('04567890123', 'Slow connection', 1, 'Open'),
+('05678901234', 'Account locked', 2, 'In Progress'),
+('06789012345', 'Plan activation failed', 3, 'Resolved');
+
+
+SELECT* FROM Technical_Support_Ticket
+DELETE FROM Technical_Support_Ticket
+
+
+
+
+--test allCustomerAccounts view
+SELECT* FROM Customer_Profile;
+SELECT* FROM Customer_Account;
+SELECT* FROM allCustomerAccounts;
+
+--test allServicePlans view
+SELECT* FROM Service_Plan;
+SELECT* FROM allServicePlans;
+
+--test allBenefits view
+SELECT* FROM Benefits;
+SELECT* FROM allBenefits;
+
+--test AccountPayments view
+SELECT* FROM Customer_Account;
+SELECT* FROM Payment;
+SELECT* FROM AccountPayments;
+
+--test allShops view
+SELECT* FROM Shop;
+SELECT* FROM allShops;
+
+--test allResolvedTickets view
+SELECT* FROM Technical_Support_Ticket;
+SELECT* FROM allResolvedTickets;
+
+--test CustomerWallet view
+SELECT* FROM Customer_Profile;
+SELECT* FROM Wallet;
+Select* FROM CustomerWallet;
+
+--test E_shopVouchers view
+SELECT* FROM E_shop;
+SELECT * FROM Voucher;
+SELECT* FROM E_shopVouchers;
+
+--test PhysicalStoreVouchers view
+SELECT* FROM Physical_Shop;
+SELECT* FROM Voucher;
+SELECT* FROM PhysicalStoreVouchers;
+
+--test Num_of_cashback view
+SELECT* FROM CashBack;
+SELECT*FROM Wallet;
+SELECT* FROM Num_of_cashback;
+
+--test Account_Plan Procedure
+SELECT* FROM Customer_Account;
+SELECT* FROM Service_Plan;
+SELECT* FROM Subscription;
+EXEC Account_Plan;
+
+--test Benefits_Account procedure
+SELECT* FROM Benefits;
+SELECT* FROM Plan_Provides_Benefits;
+SELECT* FROM Subscription;
+EXEC Benefits_Account @mobileNo = '01234567890',@planID = 1;
+
+--test for Account_Plan_date
+SELECT* FROM Customer_Account
+SELECT* FROM Subscription
+SELECT* FROM Service_Plan
+SELECT* FROM Account_Plan_date('2023-01-15',1)
+
+--test for Account_Usage_Plan
+SELECT* FROM Customer_Account
+SELECT* FROM Plan_Usage
+SELECT* FROM Subscription
+SELECT* FROM Account_Usage_Plan('01234567890','2023-01-15')
+
+--test Benefits_Account procedure
+SELECT* FROM Benefits;
+SELECT* FROM Plan_Provides_Benefits;
+SELECT* FROM Subscription;
+EXEC Benefits_Account @mobileNo = '01234567890',@planID = 1;
+
+--test for Account_SMS_Offers
+SELECT* FROM Exclusive_Offer
+SELECT* FROM Customer_Account
+SELECT* FROM Benefits
+SELECt* FROM Account_SMS_Offers('03456789012')
+
+--test Account_Payment_Points procedure
+SELECT * FROM Payment;
+SELECT* FROM Points_Group;
+DECLARE @TotalTransactions INT,
+        @TotalPoints INT;
+EXEC Account_Payment_Points  @MobileNo = '04567890123', @Total_Number_of_transactions = @TotalTransactions OUTPUT,  @Total_Amount_of_points = @TotalPoints OUTPUT;
+SELECT @TotalTransactions AS TotalNumberOfTransactions, @TotalPoints AS TotalAmountOfPoints;
+
+--test Wallet_Cashback_Amount
+SELECT* FROM CashBack
+SELECT* FROM Plan_Provides_Benefits 
+DECLARE @CashbackAmount DECIMAL(10, 2);
+    SELECT @CashbackAmount = dbo.Wallet_Cashback_Amount(1, 1);
+    SELECT @CashbackAmount AS CashbackAmount;
+
+--test Wallet_Transfer_Amount
+SELECT* FROM Transfer_money
+
+DECLARE @AverageAmount DECIMAL(10, 2);
+    SELECT @AverageAmount = dbo.Wallet_Transfer_Amount(2, '2023-01-01', '2023-05-01');
+    SELECT @AverageAmount AS AverageTransactionAmount;
+
+--test for Wallet_MobileNo
+SELECT* FROM Wallet
+SELECT* FROM Customer_Account
+SELECT dbo.Wallet_MobileNo('01234567890'); --return 1
+SELECT dbo.Wallet_MobileNo('05678901234'); --return 1
+SELECT dbo.Wallet_MobileNo('07890123456'); --return 0
+SELECT dbo.Wallet_MobileNo('08901234567'); --return 0
+
+--test Total_Points_Account
+SELECT* FROM Points_Group
+SELECT* FROM Customer_Account
+
+DECLARE @TotalPoints1 INT;
+EXEC Total_Points_Account @MobileNo = '01234567890', @TotalPoints = @TotalPoints1 OUTPUT;
+SELECT @TotalPoints1 AS TotalPoints;  -- returns 50
+
+DECLARE @TotalPoints INT;
+EXEC Total_Points_Account @MobileNo = '02345678901', @TotalPoints = @TotalPoints OUTPUT;
+SELECT @TotalPoints AS TotalPoints2;  --return 30
