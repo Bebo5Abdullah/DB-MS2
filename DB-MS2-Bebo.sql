@@ -106,7 +106,7 @@ Begin
 
 	CREATE TABLE Points_Group (
 		pointID INT IDENTITY,
-		benefitID INT FOREIGN KEY REFERENCES Benefits(benefitID),
+		benefitID INT FOREIGN KEY REFERENCES Benefits(benefitID) ON DELETE CASCADE,
 		pointsAmount INT,
 		PaymentID INT FOREIGN KEY REFERENCES Payment(PaymentID),
 		PRIMARY KEY(pointID, benefitID)
@@ -476,7 +476,11 @@ END
 --2.3 j																	---> INCOMPLETE AAAAA33333333333333333
 
 
-
+--GRANT ADMIN EXEC on 2.3
+GO
+GRANT EXEC ON PROCEDURE(Account_plan , Benefits_Account, Account_Payment_Points, Total_Points_Account) TO Admin
+GRANT EXEC ON FUNCTION(Account_plan_date , Account_Usage_Plan , Account_SMS_Offers , Wallet_Cashback_Amount, 
+						Wallet_Transfer_Amount, Wallet_MobileNo) TO Admin
 
 
 --2.4 a
@@ -682,6 +686,13 @@ BEGIN
 	ELSE
 		PRINT 'Voucher Expired'
 END
+
+--GRANT USER EXEC on 2.4
+GRANT EXEC ON FUNCTION(AccountLoginValidation, Consumption, Usage_Plan_CurrentMonth, Cashback_Wallet_Customer, 
+                        Remaining_plan_amount, Extra_plan_amount, Subscribed_plans_5_Months) TO customer
+
+GRANT EXEC ON PROC(Unsubscribed_Plans, Ticket_Account_Customer, Account_Highest_Voucher, Top_Successful_Payments, Initiate_plan_payment, 
+                    Payment_wallet_cashback, Initiate_balance_payment, Redeem_voucher_points ) TO customer
 
 
 EXEC createAllTables
