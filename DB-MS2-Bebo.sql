@@ -384,14 +384,13 @@ RETURN(
 	SELECT planID ,
 	       SUM(data_consumption) as total_data_consumption , SUM(minutes_used) as total_minutes_used, SUM(SMS_sent) as total_SMS_sent
 	FROM Plan_Usage
-	WHERE mobileNo = @mobileNo AND start_date >= @from_date
+	WHERE mobileNo = @mobileNo AND start_date <= @from_date AND end_date >= @from_date
 	GROUP BY planID
 
 );
 
 
-
---2.3 d																			
+--2.3 d													---> Can't do Deletetr						
 GO 
 CREATE PROC Benefits_Account
 @mobileNo char(11) , @planID int
@@ -410,10 +409,11 @@ AS
 RETURN(
 	SELECT exoff.offerID, exoff.benefitID, exoff.SMS_offered
 	FROM Exclusive_Offer exoff
-	WHERE SMS_offered is not null AND SMS_offered > 0
+	JOIN Benefits b ON exoff.benefitID = b.benefitID
+	WHERE SMS_offered is not null AND SMS_offered > 0 AND b.mobileNo=@mobileNo
 );
 
---2.3 f															      ---> Wallet considered transaction? last year walla sana men delwa2ty
+--2.3 f															     
 GO
 CREATE PROC Account_Payment_Points
 @mobileNo char(11) , @transactionsNo INT OUTPUT, @totalPoints INT OUTPUT
@@ -473,14 +473,26 @@ BEGIN
 	RETURN @out
 END
 
---2.3 j																	---> INCOMPLETE AAAAA33333333333333333
+--2.3 j																	
+GO
+CREATE PROC Total_Points_Account @mobileNo char(11), @totalPoints int OUTPUT
+AS
+BEGIN
+    SELECT @totalPoints = SUM(pg.pointsAmount)
+    FROM Payment pay JOIN Points_Group pg on pay.paymentID = pg.PaymentID
+    WHERE pay.mobileNo = @mobileNo
+    UPDATE Customer_Account 
+    SET point = @totalPoints
+    WHERE mobileNo = @mobileNo
+END
+
 
 
 --GRANT ADMIN EXEC on 2.3
-GO
-GRANT EXEC ON PROCEDURE(Account_plan , Benefits_Account, Account_Payment_Points, Total_Points_Account) TO Admin
-GRANT EXEC ON FUNCTION(Account_plan_date , Account_Usage_Plan , Account_SMS_Offers , Wallet_Cashback_Amount, 
-						Wallet_Transfer_Amount, Wallet_MobileNo) TO Admin
+--GO
+--GRANT EXEC ON PROCEDURE(Account_plan , Benefits_Account, Account_Payment_Points, Total_Points_Account) TO Admin
+--GRANT EXEC ON FUNCTION(Account_plan_date , Account_Usage_Plan , Account_SMS_Offers , Wallet_Cashback_Amount, 
+--						Wallet_Transfer_Amount, Wallet_MobileNo) TO Admin
 
 
 --2.4 a
@@ -554,7 +566,7 @@ CREATE PROC Ticket_Account_Customer
 AS
 	SELECT @output = COUNT(tst.ticketID) 
 	FROM Technical_Support_Ticket tst
-	JOIN Customer_Account acc ON tst.mobileNo = acc.mobileNo
+	RIGHT OUTER JOIN Customer_Account acc ON tst.mobileNo = acc.mobileNo
 	WHERE acc.nationalID = @nationalID AND tst.status != 'Resolved'
 
 
@@ -687,15 +699,14 @@ BEGIN
 		PRINT 'Voucher Expired'
 END
 
---GRANT USER EXEC on 2.4
-GRANT EXEC ON FUNCTION(AccountLoginValidation, Consumption, Usage_Plan_CurrentMonth, Cashback_Wallet_Customer, 
-                        Remaining_plan_amount, Extra_plan_amount, Subscribed_plans_5_Months) TO customer
+----GRANT USER EXEC on 2.4
+--GRANT EXEC ON FUNCTION(AccountLoginValidation, Consumption, Usage_Plan_CurrentMonth, Cashback_Wallet_Customer, 
+--                        Remaining_plan_amount, Extra_plan_amount, Subscribed_plans_5_Months) TO customer
 
-GRANT EXEC ON PROC(Unsubscribed_Plans, Ticket_Account_Customer, Account_Highest_Voucher, Top_Successful_Payments, Initiate_plan_payment, 
-                    Payment_wallet_cashback, Initiate_balance_payment, Redeem_voucher_points ) TO customer
+--GRANT EXEC ON PROC(Unsubscribed_Plans, Ticket_Account_Customer, Account_Highest_Voucher, Top_Successful_Payments, Initiate_plan_payment, 
+--                    Payment_wallet_cashback, Initiate_balance_payment, Redeem_voucher_points ) TO customer
 
 
-EXEC createAllTables
 
 
 -- Insert data into Customer_Profile
@@ -1010,7 +1021,7 @@ SELECT* FROM Account_Plan_date('2023-01-15',1)
 SELECT* FROM Customer_Account
 SELECT* FROM Plan_Usage
 SELECT* FROM Subscription
-SELECT* FROM Account_Usage_Plan('01234567890','2023-01-15')
+SELECT* FROM Account_Usage_Plan('01234567890','2023-01-01')
 
 --test Benefits_Account procedure
 SELECT* FROM Benefits;
@@ -1025,11 +1036,11 @@ SELECT* FROM Benefits
 SELECt* FROM Account_SMS_Offers('03456789012')
 
 --test Account_Payment_Points procedure
-SELECT * FROM Payment;
+SELECT * FROM Payment WHERE status = 'successful';
 SELECT* FROM Points_Group;
 DECLARE @TotalTransactions INT,
         @TotalPoints INT;
-EXEC Account_Payment_Points  @MobileNo = '04567890123', @Total_Number_of_transactions = @TotalTransactions OUTPUT,  @Total_Amount_of_points = @TotalPoints OUTPUT;
+EXEC Account_Payment_Points  '04567890123',  @TotalTransactions OUTPUT,   @TotalPoints OUTPUT;
 SELECT @TotalTransactions AS TotalNumberOfTransactions, @TotalPoints AS TotalAmountOfPoints;
 
 --test Wallet_Cashback_Amount
