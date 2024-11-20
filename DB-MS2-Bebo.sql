@@ -72,8 +72,8 @@ Begin
 	CREATE TABLE Process_Payment(												--------> PAYMENT(AMOUNT) badeena
 		paymentID int foreign key references Payment(paymentID),
 		planID int foreign key references Service_Plan(planID),
-		remaining_balance as dbo.calcRemainBalance(),
-		extra_amount as dbo.calcExtraAmount()
+		remaining_balance as dbo.calcRemainBalance(paymentID),
+		extra_amount as dbo.calcExtraAmount(paymentID)
 	);
 
 	
@@ -181,8 +181,8 @@ go
 CREATE FUNCTION calcRemainBalance() 
 RETURNS decimal(10,1) 
 AS BEGIN
-		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payments pay, Process_Payments pp where pay.paymentID = pp.paymentID)
-		DECLARE @y as decimal(10,1) = (SELECT pp.price FROM Service_Plan sp, Process_Payments pp where sp.planID = pp.planID)
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay, Process_Payment pp where pay.paymentID = pp.paymentID)
+		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp, Process_Payment pp where sp.planID = pp.planID)
 		DECLARE @res  decimal(10,1) 
 		IF (@x > @y) 
 			set @res = @x - @y
@@ -196,8 +196,8 @@ go
 CREATE FUNCTION calcExtraAmount() 
 RETURNS decimal(10,1) 
 AS BEGIN
-		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payments pay, Process_Payments pp where pay.paymentID = pp.paymentID)
-		DECLARE @y as decimal(10,1) = (SELECT pp.price FROM Service_Plan sp, Process_Payments pp where sp.planID = pp.planID)
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay, Process_Payment pp where pay.paymentID = pp.paymentID)
+		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp, Process_Payment pp where sp.planID = pp.planID)
 		DECLARE @res  decimal(10,1) 
 		IF (@x < @y) 
 			set @res = @y - @x
@@ -544,8 +544,11 @@ RETURN(
 	SELECT PlnUsg.planID, PlnUsg.data_consumption , PlnUsg.minutes_used , PlnUsg.SMS_sent
 	FROM Plan_Usage PlnUsg
 	JOIN Subscription sub ON PlnUsg.planID = sub.planID
-	WHERE sub.mobileNo = @mobileNo AND sub.status = 'active' AND YEAR(sub.subscription_date) = YEAR(GETDATE()) AND MONTH(sub.subscription_date) = MONTH(GETDATE())
-)
+	WHERE sub.mobileNo = @mobileNo AND sub.status = 'active'
+	AND Month(PlnUsg.start_date) <= Month(GETDATE()) AND YEAR(PlnUsg.start_date) <= YEAR(GETDATE())
+	AND MONTH(PlnUsg.end_date) >= MONTH(GETDATE()) AND YEAR(PlnUsg.end_date) >= YEAR(GETDATE())
+);
+
 
 --2.4 e
 GO
@@ -1076,3 +1079,53 @@ SELECT @TotalPoints1 AS TotalPoints;  -- returns 50
 DECLARE @TotalPoints INT;
 EXEC Total_Points_Account @MobileNo = '02345678901', @TotalPoints = @TotalPoints OUTPUT;
 SELECT @TotalPoints AS TotalPoints2;  --return 30
+
+--test for AccountLoginValidation
+SELECT * FROM Customer_Account
+SELECT dbo.AccountLoginValidation('01234567890' , 'password123')
+
+--test for Consumption
+SELECT * FROM Plan_Usage WHERE planID = 1
+SELECT * FROM Service_Plan
+SELECT * FROM dbo.Consumption('Plan A', '2023-01-01' , '2023-04-10')
+
+--test for Unsubscribed_Plans
+SELECT * FROM Service_Plan
+SELECT * FROM Subscription WHERE mobileNo = '01234567890'
+EXEC Unsubscribed_Plans '01234567890'
+
+--test for Usage_Plan_CurrentMonth
+SELECT * FROM Plan_Usage
+SELECT * FROM Subscription WHERE mobileNo = '01234567890'
+SELECT * FROM dbo.Usage_Plan_CurrentMonth('01234567890')
+
+--test for Cashback_Wallet_Customer
+SELECT * FROM Customer_Account
+SELECT * FROM Wallet
+SELECT * FROM Cashback
+SELECT * FROM dbo.Cashback_Wallet_Customer(1)
+
+--test for Ticket_Account_Customer
+SELECT * FROM Customer_Account
+SELECT * FROM Technical_Support_Ticket
+DECLARE @tck int = 0
+EXEC Ticket_Account_Customer 1 , @tck output
+PRINT @tck
+
+--test for Account_Highest_Voucher
+SELECt * FROM Customer_Account
+SELECT * FROM Voucher
+DECLARE @vouch int
+EXEC Account_Highest_Voucher '01234567890', @vouch output
+PRINT @vouch
+
+--test for Remaining_plan_amount
+SELECT * FROM Service_Plan
+SELECt * FROM Payment
+SELECT * FROM Process_Payment
+
+
+
+
+
+
