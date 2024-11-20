@@ -72,8 +72,8 @@ Begin
 	CREATE TABLE Process_Payment(												--------> PAYMENT(AMOUNT) badeena
 		paymentID int foreign key references Payment(paymentID),
 		planID int foreign key references Service_Plan(planID),
-		remaining_balance as dbo.calcRemainBalance(paymentID),
-		extra_amount as dbo.calcExtraAmount(paymentID)
+		remaining_balance as dbo.calcRemainBalance(paymentID, planID),
+		extra_amount as dbo.calcExtraAmount(paymentID, planID)
 	);
 
 	
@@ -177,12 +177,19 @@ Begin
 END;
 
 
+ALTER TABLE Process_Payment DROP COLUMN remaining_balance
+ALTER TABLE Process_Payment DROP COLUMN extra_amount
+drop function calcRemainBalance, calcExtraAmount
+ALTER TABLE Process_Payment ADD remaining_balance AS dbo.calcRemainBalance(paymentID, planID)
+ALTER TABLE Process_Payment ADD extra_amount AS dbo.calcExtraAmount(paymentID, planID)
+
+
 go
-CREATE FUNCTION calcRemainBalance() 
+CREATE FUNCTION calcRemainBalance(@payID int, @planID int) 
 RETURNS decimal(10,1) 
 AS BEGIN
-		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay, Process_Payment pp where pay.paymentID = pp.paymentID)
-		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp, Process_Payment pp where sp.planID = pp.planID)
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay, Process_Payment pp where pay.paymentID = @payID)
+		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp, Process_Payment pp where sp.planID = @planID)
 		DECLARE @res  decimal(10,1) 
 		IF (@x > @y) 
 			set @res = @x - @y
@@ -193,11 +200,11 @@ END
 
 
 go
-CREATE FUNCTION calcExtraAmount() 
+CREATE FUNCTION calcExtraAmount(@payID int, @planID int) 
 RETURNS decimal(10,1) 
 AS BEGIN
-		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay, Process_Payment pp where pay.paymentID = pp.paymentID)
-		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp, Process_Payment pp where sp.planID = pp.planID)
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay, Process_Payment pp where pay.paymentID = @payID)
+		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp, Process_Payment pp where sp.planID = @planID)
 		DECLARE @res  decimal(10,1) 
 		IF (@x < @y) 
 			set @res = @y - @x
