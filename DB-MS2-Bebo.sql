@@ -665,7 +665,7 @@ END
 --2.4 m
 GO 
 CREATE PROC  Payment_wallet_cashback  
-@MobileNo char(11), @payment_id int,   int
+@MobileNo char(11), @payment_id int, @benefit_id   int
 AS 
 BEGIN
 	DECLARE @cashback as int = (Select amount FROM Payment WHERE paymentID = @payment_id AND mobileNO = @MobileNO ) * 0.10
