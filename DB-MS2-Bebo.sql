@@ -188,8 +188,8 @@ go
 CREATE FUNCTION calcRemainBalance(@payID int, @planID int) 
 RETURNS decimal(10,1) 
 AS BEGIN
-		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay, Process_Payment pp where pay.paymentID = @payID)
-		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp, Process_Payment pp where sp.planID = @planID)
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay where pay.paymentID = @payID)
+		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp where sp.planID = @planID)
 		DECLARE @res  decimal(10,1) 
 		IF (@x > @y) 
 			set @res = @x - @y
@@ -203,8 +203,8 @@ go
 CREATE FUNCTION calcExtraAmount(@payID int, @planID int) 
 RETURNS decimal(10,1) 
 AS BEGIN
-		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay, Process_Payment pp where pay.paymentID = @payID)
-		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp, Process_Payment pp where sp.planID = @planID)
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay where pay.paymentID = @payID)
+		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp where sp.planID = @planID)
 		DECLARE @res  decimal(10,1) 
 		IF (@x < @y) 
 			set @res = @y - @x
@@ -665,7 +665,7 @@ END
 --2.4 m
 GO 
 CREATE PROC  Payment_wallet_cashback  
-@MobileNo char(11), @payment_id int, @benefit_id int
+@MobileNo char(11), @payment_id int,   int
 AS 
 BEGIN
 	DECLARE @cashback as int = (Select amount FROM Payment WHERE paymentID = @payment_id AND mobileNO = @MobileNO ) * 0.10
@@ -1130,9 +1130,46 @@ PRINT @vouch
 SELECT * FROM Service_Plan
 SELECt * FROM Payment
 SELECT * FROM Process_Payment
+INSERT INTO Process_Payment VALUES (6,3) , (2,3)
+SELECT dbo.Remaining_plan_amount('06789012345', 'Plan C')
+
+--test for Extra_plan_amount
+SELECT dbo.Extra_plan_amount('02345678901', 'Plan C')
+
+--test for Top_Successful_Payments
+SELECT * FROM Payment
+INSERT INTO Payment VALUES(60, '2023-01-10' , 'cash' , 'successful' , '01234567890')
+
+--test for Subscribed_plans_5_Months
+SELECT * FROM Subscription
+SELECT * FROM Service_Plan
+INSERT INTO Subscription VALUES ('01234567890' , 2 , '2024-7-30' , 'active')
+SELECT * FROM dbo.Subscribed_plans_5_Months('01234567890')
+
+--test for Initiate_plan_payment
+EXEC Initiate_plan_payment '02345678901' , 50.0 , 'cash' , 2
+SELECT * FROM Payment
+SELECT * FROM Service_Plan
+SELECT * FROM Subscription
+
+--test for Payment_wallet_cashback
+--EXEC Payment_wallet_cashback 
+SELECT * FROM Cashback
+SELECT * FROM Payment
+SELECT * FROM Benefits
+SELECT * FROM Wallet
 
 
+--test for Initiate_balance_payment
+SELECT * FROM Payment
+SELECt * FROM Customer_Account
+EXEC Initiate_balance_payment '01234567890' , 110.0 , 'credit' 
 
+--test for Redeem_voucher_points
+INSERT INTO Voucher VALUES (100000 , DATEADD(YEAR, 1, GETDATE()) , 1000 , '01234567890' , 2 , Null)
+EXEC Redeem_voucher_points '01234567890' , 7
+SELECT * FROM Customer_Account
+SELECT * FROM Voucher
 
 
 
