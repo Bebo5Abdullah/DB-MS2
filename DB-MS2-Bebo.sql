@@ -1,5 +1,4 @@
 ﻿CREATE DATABASE TELECOM_TEAM_126
-DROP DATABASE TELECOM_TEAM_126
 
 
 
@@ -11,7 +10,6 @@ Begin
 	CREATE TABLE Customer_profile(
 
 		nationalID INT PRIMARY KEY ,
-
 		first_name varchar(50),
 		last_name varchar(50),
 		email varchar(50),
@@ -27,7 +25,9 @@ Begin
 		start_date date,
 		status varchar(50),
 		point int default 0,
-		nationalID int foreign key references Customer_profile(nationalID)
+		nationalID int foreign key references Customer_profile(nationalID),
+		CHECK (status IN ('active', 'onhold')),
+		CHECK (account_type IN ('Prepaid', 'Post Paid', 'Pay_as_you_go')) 
 	);
 
 
@@ -46,7 +46,8 @@ Begin
 		planID int foreign key references Service_Plan(planID),
 		subscription_date date,
 		status varchar(50),
-		primary key(mobileNo, planID)
+		primary key(mobileNo, planID),
+		CHECK (status IN ('active', 'onhold'))
 	);
 	
 	CREATE TABLE Plan_Usage(
@@ -66,7 +67,9 @@ Begin
 		date_of_payment date,
 		payment_method varchar(50),
 		status varchar(50),
-		mobileNo char(11) foreign key references Customer_Account(mobileNo)
+		mobileNo char(11) foreign key references Customer_Account(mobileNo),
+		CHECK (status IN ('successful', 'pending', 'rejected')),
+		CHECK (payment_method IN ('cash', 'credit'))
 	);
 
 	CREATE TABLE Process_Payment(												
@@ -90,7 +93,7 @@ Begin
 	CREATE TABLE Transfer_money(
 	walletID1 INT FOREIGN KEY REFERENCES Wallet(walletID),
 	walletID2 INT FOREIGN KEY REFERENCES Wallet(walletID),
-	transfer_id INT IDENTITY,
+	transfer_id INT IDENTITY(1,1),
 	amount decimal(10,2),
 	transfer_date date,
 	PRIMARY KEY(walletID1,walletID2, transfer_id)
@@ -101,11 +104,12 @@ Begin
 		description VARCHAR(50),
 		validity_date date,
 		status varchar(50),
-		mobileNo char(11) foreign key references Customer_Account(mobileNo)
+		mobileNo char(11) foreign key references Customer_Account(mobileNo),
+		CHECK (status IN ('active', 'expired'))
 	);
 
 	CREATE TABLE Points_Group (
-		pointID INT IDENTITY,
+		pointID INT IDENTITY(1,1),
 		benefitID INT FOREIGN KEY REFERENCES Benefits(benefitID) ON DELETE CASCADE,
 		pointsAmount INT,
 		PaymentID INT FOREIGN KEY REFERENCES Payment(PaymentID),
@@ -113,7 +117,7 @@ Begin
 	);
 
 	CREATE TABLE Exclusive_Offer (
-		offerID INT IDENTITY,
+		offerID INT IDENTITY(1,1),
 		benefitID INT FOREIGN KEY REFERENCES Benefits(benefitID),
 		internet_offered INT,
 		SMS_offered INT,
@@ -122,7 +126,7 @@ Begin
 	);
 
 	CREATE TABLE Cashback (															
-		CashbackID INT IDENTITY,
+		CashbackID INT IDENTITY(1,1),
 		benefitID INT FOREIGN KEY REFERENCES Benefits(benefitID),
 		walletID INT FOREIGN KEY REFERENCES Wallet(walletID),
 		amount INT default 0,
@@ -137,7 +141,7 @@ Begin
 	);
 
 	CREATE TABLE Shop (
-		shopID INT IDENTITY PRIMARY KEY,
+		shopID INT IDENTITY(1,1) PRIMARY KEY,
 		name varchar(50),
 		category varchar(50)
 	);
@@ -155,7 +159,7 @@ Begin
 	);
 
 	CREATE TABLE Voucher (
-		voucherID INT PRIMARY KEY IDENTITY,
+		voucherID INT PRIMARY KEY IDENTITY(1,1),
 		value INT,
 		expiry_date DATE,
 		points INT,
@@ -165,23 +169,17 @@ Begin
 	);
 
 	CREATE TABLE Technical_Support_Ticket (
-		ticketID INT IDENTITY,
+		ticketID INT IDENTITY(1,1),
 		mobileNo CHAR(11) FOREIGN KEY REFERENCES Customer_Account(mobileNo),
 		Issue_description VARCHAR(50),
 		priority_level INT,
 		status VARCHAR(50),
-		PRIMARY KEY(ticketID,mobileNo)
+		PRIMARY KEY(ticketID,mobileNo),
+		CHECK (status IN ('Open', 'In Progress', 'Resolved'))
 	);
 
 	
 END;
-
-
-ALTER TABLE Process_Payment DROP COLUMN remaining_balance
-ALTER TABLE Process_Payment DROP COLUMN extra_amount
-drop function calcRemainBalance, calcExtraAmount
-ALTER TABLE Process_Payment ADD remaining_balance AS dbo.calcRemainBalance(paymentID, planID)
-ALTER TABLE Process_Payment ADD extra_amount AS dbo.calcExtraAmount(paymentID, planID)
 
 
 go
@@ -243,6 +241,53 @@ END;
 
 EXEC dropAllTables
 -----------------------------------2.1 C END
+
+-----------------------------------2.1 D
+GO
+CREATE PROCEDURE dropAllProceduresFunctionsViews AS
+    DROP PROCEDURE IF EXISTS createAllTables
+    DROP PROCEDURE IF EXISTS dropAllTables
+    DROP PROCEDURE IF EXISTS clearAllTables
+    DROP VIEW IF EXISTS allCustomerAccounts
+    DROP VIEW IF EXISTS allServicePlans
+    DROP VIEW IF EXISTS allBenefits
+    DROP VIEW IF EXISTS AccountPayments
+    DROP VIEW IF EXISTS allShops
+    DROP VIEW IF EXISTS allResolvedTickets
+    DROP VIEW IF EXISTS CustomerWallet
+    DROP VIEW IF EXISTS E_shopVouchers
+    DROP VIEW IF EXISTS PhysicalStoreVouchers
+    DROP VIEW IF EXISTS Num_of_cashback
+    DROP PROCEDURE IF EXISTS Account_Plan
+    DROP FUNCTION IF EXISTS Account_Plan_date
+    DROP FUNCTION IF EXISTS Account_Usage_Plan
+    DROP PROCEDURE IF EXISTS Benefits_Account
+    DROP FUNCTION IF EXISTS Account_SMS_Offers
+    DROP PROCEDURE IF EXISTS Account_Payment_Points
+    DROP FUNCTION IF EXISTS Wallet_Cashback_Amount
+    DROP FUNCTION IF EXISTS Wallet_Transfer_Amount
+    DROP FUNCTION IF EXISTS Wallet_MobileNo
+    DROP PROCEDURE IF EXISTS Total_Points_Account
+    DROP FUNCTION IF EXISTS AccountLoginValidation
+    DROP FUNCTION IF EXISTS Consumption
+    DROP PROCEDURE IF EXISTS Unsubscribed_Plans
+    DROP FUNCTION IF EXISTS Usage_Plan_CurrentMonth
+    DROP FUNCTION IF EXISTS Cashback_Wallet_Customer
+    DROP PROCEDURE IF EXISTS Ticket_Account_Customer
+    DROP PROCEDURE IF EXISTS Account_Highest_Voucher
+    DROP FUNCTION IF EXISTS Remaining_plan_amount
+    DROP FUNCTION IF EXISTS Extra_plan_amount
+    DROP PROCEDURE IF EXISTS Top_Successful_Payments
+    DROP FUNCTION IF EXISTS Subscribed_plans_5_Months
+	DROP PROCEDURE IF EXISTS Initiate_plan_payment
+    DROP PROCEDURE IF EXISTS Payment_wallet_cashback
+    DROP PROCEDURE IF EXISTS Initiate_balance_payment
+    DROP PROCEDURE IF EXISTS Redeem_voucher_points
+    DROP FUNCTION  IF EXISTS calcRemainBalance 
+    DROP FUNCTION  IF EXISTS calcExtraAmount
+
+GO
+-----------------------------------2.1 D END	
 
 -------------------------------2.1 e
 GO
@@ -335,6 +380,7 @@ AS
 	SELECT e.* , v.voucherID , v.value
 	FROM E_shop e
 	JOIN Voucher v ON e.shopID = v.shopID
+	WHERE v.redeem_date IS NOT NULL
 
 --2.2 i
 GO
@@ -343,13 +389,14 @@ AS
 	SELECT phys.* , v.voucherID , v.value
 	FROM Physical_Shop phys
 	JOIN Voucher v ON phys.shopID = v.shopID
+	WHERE v.redeem_date IS NOT NULL
 ;
 
 --2.2 j
 GO
 CREATE VIEW Num_of_cashback
 AS
-	SELECT walletID , Count(CashbackID) as cashbacks_per_wallet
+	SELECT walletID , ISNULL(COUNT(CashbackID), 0) as cashbacks_per_wallet
 	FROM Cashback
 	GROUP BY walletID
 ;
@@ -375,7 +422,6 @@ RETURNS TABLE
 AS
 RETURN(
 	SELECT sub.mobileNo, sub.planID , sp.name
-
 	FROM Subscription sub
 	JOIN Service_Plan sp ON sub.planID = sp.planID
 	WHERE sub.planID = @planID AND sub.subscription_date = @date
@@ -407,6 +453,7 @@ BEGIN
 	SET mobileNo = NULL
 	WHERE mobileNO = @mobileNo AND
 	benefitID IN (SELECT benefitID from Plan_Provides_Benefits where planID = @planID)
+	SELECT * FROM Benefits
 END
 
 --2.3 e
@@ -439,7 +486,7 @@ RETURNS int
 AS 
 BEGIN
 	DECLARE @cashback_amount as int =  (
-	SELECT amount FROM Cashback
+	SELECT SUM(amount) FROM Cashback
 	WHERE walletID = @walletID AND 
 	benefitID IN (SELECT benefitID FROM Plan_Provides_Benefits WHERE planID = @planId)
 	)
@@ -677,7 +724,7 @@ BEGIN
 		
 
 		UPDATE Wallet
-		SET current_balance = current_balance + (SELECT amount*0.1 FROM Payment WHERE paymentID = @payment_id)
+		SET current_balance = current_balance + (SELECT amount*0.1 FROM Payment WHERE paymentID = @payment_id), last_modified_date = GETDATE()
 	END
 END 
 	
@@ -709,7 +756,6 @@ BEGIN
 			UPDATE Voucher 
 			SET redeem_date = GETDATE()
 			WHERE voucherID = @voucherID
-
 
 			UPDATE Customer_Account
 			SET	point = point + @points
