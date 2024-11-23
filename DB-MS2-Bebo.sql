@@ -69,7 +69,7 @@ Begin
 		mobileNo char(11) foreign key references Customer_Account(mobileNo)
 	);
 
-	CREATE TABLE Process_Payment(												--------> PAYMENT(AMOUNT) badeena
+	CREATE TABLE Process_Payment(												
 		paymentID int foreign key references Payment(paymentID),
 		planID int foreign key references Service_Plan(planID),
 		remaining_balance as dbo.calcRemainBalance(paymentID, planID),
@@ -354,7 +354,7 @@ AS
 	GROUP BY walletID
 ;
 
--------------------------------------------------------------------------------------------------------------------
+----------
 
 
 --2.3 a															
@@ -397,13 +397,14 @@ RETURN(
 );
 
 
---2.3 d													---> Can't do Deletetr						
+--2.3 d																		
 GO 
 CREATE PROC Benefits_Account
 @mobileNo char(11) , @planID int
 AS
 BEGIN
-	DELETE FROM Benefits
+	UPDATE Benefits
+	SET mobileNo = NULL
 	WHERE mobileNO = @mobileNo AND
 	benefitID IN (SELECT benefitID from Plan_Provides_Benefits where planID = @planID)
 END
@@ -494,12 +495,6 @@ BEGIN
 END
 
 
-
---GRANT ADMIN EXEC on 2.3
---GO
---GRANT EXEC ON PROCEDURE(Account_plan , Benefits_Account, Account_Payment_Points, Total_Points_Account) TO Admin
---GRANT EXEC ON FUNCTION(Account_plan_date , Account_Usage_Plan , Account_SMS_Offers , Wallet_Cashback_Amount, 
---						Wallet_Transfer_Amount, Wallet_MobileNo) TO Admin
 
 
 --2.4 a
@@ -592,7 +587,7 @@ AS
 				 FROM Voucher
 				 WHERE mobileNo = @mobileNo)
 		
---2.4 h																	-----> Which remaining balance if there is 2 payments for same plan			
+--2.4 h																		
 GO
 CREATE FUNCTION Remaining_plan_amount (@mobileNo char(11) , @plan_name varchar(50))
 RETURNS decimal(10,1) 
@@ -609,7 +604,7 @@ END;
 
 
 
---2.4 i																	-----> Which extra amount if there is 2 payments for same plan				
+--2.4 i																				
 GO
 CREATE FUNCTION Extra_plan_amount (@mobileNo char(11) , @plan_name varchar(50))
 RETURNS decimal(10,1) 
@@ -668,10 +663,22 @@ CREATE PROC  Payment_wallet_cashback
 @MobileNo char(11), @payment_id int, @benefit_id   int
 AS 
 BEGIN
-	DECLARE @cashback as int = (Select amount FROM Payment WHERE paymentID = @payment_id AND mobileNO = @MobileNO ) * 0.10
-	DECLARE @wallet_id as int = (Select walletID from Wallet WHERE mobileNo = @MobileNo)
-	INSERT INTO Cashback VALUES(@benefit_id,@wallet_id, @cashback, GETDATE())
-	UPDATE Wallet SET current_balance = current_balance + @cashback WHERE walletID = @wallet_id
+	IF EXISTS (SELECT CashbackID FROM Cashback WHERE benefitID = @benefit_id)
+	IF (SELECT status FROM payment WHERE paymentID = @payment_id) = 'successful'
+	BEGIN
+		DECLARE @nationalID INT
+		SELECT @nationalID = nationalID FROM Customer_Account where mobileNo = @MobileNo
+
+		DECLARE @walletID INT
+		SELECT @walletID = w.walletID
+							 FROM Wallet w
+							 JOIN Customer_profile pr ON w.nationalID = pr.nationalID
+							 WHERE w.nationalID = @nationalID
+		
+
+		UPDATE Wallet
+		SET current_balance = current_balance + (SELECT amount*0.1 FROM Payment WHERE paymentID = @payment_id)
+	END
 END 
 	
 
@@ -696,25 +703,22 @@ AS
 BEGIN
 	IF ((SELECT expiry_date FROM Voucher WHERE voucherID = @voucherID) > GETDATE())
 	BEGIN
-		UPDATE Voucher 
-		SET redeem_date = GETDATE()
-		WHERE voucherID = @voucherID
-
 		DECLARE @points as int = (SELECT points FROM Voucher WHERE voucherID = @voucherID)
-		UPDATE Customer_Account
-		SET point = point + @points
-		WHERE mobileNo = @mobileNo
+		if @points < (SELECT point FROM Customer_Account WHERE mobileNo = @mobileNo)
+		BEGIN
+			UPDATE Voucher 
+			SET redeem_date = GETDATE()
+			WHERE voucherID = @voucherID
+
+
+			UPDATE Customer_Account
+			SET	point = point + @points
+			WHERE mobileNo = @mobileNo
+		END
 	END
-	ELSE
-		PRINT 'Voucher Expired'
+	
 END
 
-----GRANT USER EXEC on 2.4
---GRANT EXEC ON FUNCTION(AccountLoginValidation, Consumption, Usage_Plan_CurrentMonth, Cashback_Wallet_Customer, 
---                        Remaining_plan_amount, Extra_plan_amount, Subscribed_plans_5_Months) TO customer
-
---GRANT EXEC ON PROC(Unsubscribed_Plans, Ticket_Account_Customer, Account_Highest_Voucher, Top_Successful_Payments, Initiate_plan_payment, 
---                    Payment_wallet_cashback, Initiate_balance_payment, Redeem_voucher_points ) TO customer
 
 
 
