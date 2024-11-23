@@ -1,6 +1,34 @@
 ﻿CREATE DATABASE TELECOM_TEAM_126
 
 
+go
+CREATE FUNCTION calcRemainBalance(@payID int, @planID int) 
+RETURNS decimal(10,1) 
+AS BEGIN
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay where pay.paymentID = @payID)
+		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp where sp.planID = @planID)
+		DECLARE @res  decimal(10,1) 
+		IF (@x > @y) 
+			set @res = @x - @y
+		ELSE 
+			set @res = 0
+		RETURN @res
+END
+
+
+go
+CREATE FUNCTION calcExtraAmount(@payID int, @planID int) 
+RETURNS decimal(10,1) 
+AS BEGIN
+		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay where pay.paymentID = @payID)
+		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp where sp.planID = @planID)
+		DECLARE @res  decimal(10,1) 
+		IF (@x < @y) 
+			set @res = @y - @x
+		ELSE 
+			set @res = 0
+		RETURN @res
+END
 
 
 GO
@@ -182,34 +210,6 @@ Begin
 END;
 
 
-go
-CREATE FUNCTION calcRemainBalance(@payID int, @planID int) 
-RETURNS decimal(10,1) 
-AS BEGIN
-		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay where pay.paymentID = @payID)
-		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp where sp.planID = @planID)
-		DECLARE @res  decimal(10,1) 
-		IF (@x > @y) 
-			set @res = @x - @y
-		ELSE 
-			set @res = 0
-		RETURN @res
-END
-
-
-go
-CREATE FUNCTION calcExtraAmount(@payID int, @planID int) 
-RETURNS decimal(10,1) 
-AS BEGIN
-		DECLARE @x as decimal(10,1) = (SELECT pay.amount FROM Payment pay where pay.paymentID = @payID)
-		DECLARE @y as decimal(10,1) = (SELECT sp.price FROM Service_Plan sp where sp.planID = @planID)
-		DECLARE @res  decimal(10,1) 
-		IF (@x < @y) 
-			set @res = @y - @x
-		ELSE 
-			set @res = 0
-		RETURN @res
-END
 
 
 --------------------------------2.1 C
@@ -584,13 +584,13 @@ AS
 	FROM Service_Plan 
 	WHERE planId NOT IN (SELECT planID FROM Subscription WHERE mobileNo = @mobileNo)
 
---2.4 d																			--->Should be SUM??? 
+--2.4 d																			 
 GO
 CREATE FUNCTION Usage_Plan_CurrentMonth (@mobileNo char(11))
 RETURNS TABLE
 AS 
 RETURN(
-	SELECT PlnUsg.planID, PlnUsg.data_consumption , PlnUsg.minutes_used , PlnUsg.SMS_sent
+	SELECT PlnUsg.data_consumption , PlnUsg.minutes_used , PlnUsg.SMS_sent
 	FROM Plan_Usage PlnUsg
 	JOIN Subscription sub ON PlnUsg.planID = sub.planID
 	WHERE sub.mobileNo = @mobileNo AND sub.status = 'active'
@@ -754,11 +754,11 @@ BEGIN
 		if @points < (SELECT point FROM Customer_Account WHERE mobileNo = @mobileNo)
 		BEGIN
 			UPDATE Voucher 
-			SET redeem_date = GETDATE()
+			SET redeem_date = GETDATE(), mobileNO = @mobileNO
 			WHERE voucherID = @voucherID
 
 			UPDATE Customer_Account
-			SET	point = point + @points
+			SET	point = point - @points
 			WHERE mobileNo = @mobileNo
 		END
 	END
