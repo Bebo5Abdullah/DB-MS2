@@ -396,9 +396,9 @@ AS
 GO
 CREATE VIEW Num_of_cashback
 AS
-	SELECT walletID , ISNULL(COUNT(CashbackID), 0) as cashbacks_per_wallet
-	FROM Cashback
-	GROUP BY walletID
+	SELECT w.walletID , COUNT(c.CashbackID)  as cashbacks_per_wallet
+	FROM Wallet w LEFT OUTER JOIN Cahback c on w.walletID = c.walletID
+	GROUP BY w.walletID
 ;
 
 ----------
@@ -1223,3 +1223,4 @@ SELECT * FROM Voucher
 
 
 
+EXEC createAllTables;
